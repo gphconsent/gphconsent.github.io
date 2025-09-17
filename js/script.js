@@ -599,6 +599,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // --- 기존 이미지 미리보기 ---
         const setImagePreview = (imgElement, url, fallbackText) => {
+            console.log(`=== setImagePreview 호출: ${fallbackText} ===`);
+            console.log(`- 요소:`, imgElement);
+            console.log(`- URL:`, url);
+
             if (!imgElement) {
                 console.warn(`이미지 요소를 찾을 수 없음: ${fallbackText}`);
                 return;
@@ -614,6 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fileId = url.match(/[-\w]{25,}/);
                     if (fileId) {
                         imageUrl = `https://drive.google.com/thumbnail?id=${fileId[0]}&sz=w500`;
+                        console.log(`Google Drive 이미지 URL 변환: ${imageUrl}`);
                     }
                 }
 
@@ -623,13 +628,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 이미지 로드 실패 시 처리
                 imgElement.onerror = () => {
-                    console.warn(`이미지 로드 실패: ${fallbackText}`, url);
+                    console.error(`❌ 이미지 로드 실패: ${fallbackText}`, url);
+                    console.error(`- 시도한 URL:`, imageUrl);
                     imgElement.style.display = 'none';
                     imgElement.classList.add('hidden');
                 };
 
                 imgElement.onload = () => {
-                    console.log(`이미지 로드 성공: ${fallbackText}`);
+                    console.log(`✅ 이미지 로드 성공: ${fallbackText}`);
                     imgElement.style.display = 'block';
                     imgElement.classList.remove('hidden');
                 };
@@ -643,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // 이미지 키들도 여러 가능성으로 시도
-        const contractImageKeys = ['5. 계약서 사진첨부', '5. 계약서 사진 첨부', 'contractImage'];
+        const contractImageKeys = ['5. 계약서 사진첨부', '5. 계약서 사진 첨부', 'contractImage', '5. 계약서사진첨부'];
         const signatureImageKeys = [
             '10. 위 모든 약관에 동의한다는 자필 성명과 서명을 사진 첨부 부탁드립니다.',
             '10. 자필 성명과 서명',
@@ -655,7 +661,27 @@ document.addEventListener('DOMContentLoaded', () => {
             'nameChangeImage'
         ];
 
-        setImagePreview(contractPreview, findDataByKeys(contractImageKeys), '계약서 사진');
+        // 데이터에 있는 모든 키 확인
+        console.log('=== 수정 데이터에 포함된 모든 키 ===');
+        Object.keys(data).forEach(key => {
+            if (key.includes('계약') || key.includes('사진') || key.includes('이미지')) {
+                console.log(`키: "${key}" => 값: "${data[key]}"`);
+            }
+        });
+
+        // 계약서 이미지 URL 확인을 위한 디버깅
+        const contractImageUrl = findDataByKeys(contractImageKeys);
+        console.log('계약서 이미지 URL:', contractImageUrl);
+        console.log('계약서 미리보기 요소:', contractPreview);
+
+        // 각 키로 직접 확인
+        contractImageKeys.forEach(key => {
+            if (data[key]) {
+                console.log(`키 "${key}"로 찾은 값:`, data[key]);
+            }
+        });
+
+        setImagePreview(contractPreview, contractImageUrl, '계약서 사진');
         setImagePreview(signaturePreview, findDataByKeys(signatureImageKeys), '서명 이미지');
         setImagePreview(nameChangePreview, findDataByKeys(nameChangeImageKeys), '명의변경 사진');
 
@@ -767,17 +793,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             editStatusMsg.className = result.status === 'success' ? 'status-msg success' : 'status-msg error';
             editStatusMsg.textContent = result.message;
-
-            // 성공 시 2초 후 모달 자동 닫기
-            if (result.status === 'success') {
-                setTimeout(() => {
-                    editRequestModal.classList.add('hidden');
-                    unlockBodyScroll();
-                    editEmailInput.value = '';
-                    editPasswordInput.value = '';
-                    editStatusMsg.textContent = '';
-                }, 2000);
-            }
         } catch(e) {
             editStatusMsg.className = 'status-msg error';
             editStatusMsg.textContent = '오류가 발생했습니다: ' + e.message;
