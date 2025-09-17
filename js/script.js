@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let serverVerificationCode = '';
     let currentEditMode = false;
     let originalEmail = ''; // 수정 모드에서 원본 이메일 저장
+    let scrollPosition = 0; // 모달 열기 전 스크롤 위치 저장
 
     // --- 서명패드 초기화 ---
     if (typeof SignaturePad === 'undefined') {
@@ -165,6 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPreviewElement = null;
 
 
+    // --- 모달 열기/닫기 시 배경 스크롤 및 상호작용 처리 ---
+    const lockBodyScroll = () => {
+        scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+        document.body.classList.add('modal-open');
+        document.body.style.top = `-${scrollPosition}px`;
+    };
+
+    const unlockBodyScroll = () => {
+        document.body.classList.remove('modal-open');
+        document.body.style.top = '';
+        window.scrollTo(0, scrollPosition);
+    };
+
     const showCropModal = (file, inputElement, previewElement) => {
         // 브라우저 지원 여부 체크
         if (typeof Cropper === 'undefined') {
@@ -215,8 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cropImage.src = event.target.result;
             cropModal.classList.remove('hidden');
 
-            // 배경 스크롤 차단
-            document.body.style.overflow = 'hidden';
+            // 배경 스크롤 및 상호작용 차단
+            lockBodyScroll();
 
             // 기존 Cropper 인스턴스 제거
             if (currentCropper) {
@@ -423,12 +437,21 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('이미지 편집 건너뛰기');
         });
 
-        // 모달 닫기
+        // 모달 닫기 버튼 클릭
         newCloseCropModalBtn.addEventListener('click', () => {
             // 파일 선택을 취소하고 모달 닫기
             currentInputFile.value = '';
             closeCropModal();
             console.log('크롭 모달 닫기 및 파일 선택 취소');
+        });
+
+        // 오버레이 클릭 시 모달 닫기
+        cropModal.addEventListener('click', (e) => {
+            if (e.target === cropModal) {
+                currentInputFile.value = '';
+                closeCropModal();
+                console.log('오버레이 클릭으로 크롭 모달 닫기');
+            }
         });
     };
 
@@ -438,8 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cropModal.classList.add('hidden');
         }
 
-        // 배경 스크롤 복원
-        document.body.style.overflow = '';
+        // 배경 스크롤 및 상호작용 차단 해제
+        unlockBodyScroll();
 
         if (currentCropper) {
             currentCropper.destroy();
@@ -676,8 +699,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- 수정 모달 ---
-    openEditModalBtn.addEventListener('click', () => editRequestModal.classList.remove('hidden'));
-    closeEditModalBtn.addEventListener('click', () => editRequestModal.classList.add('hidden'));
+    openEditModalBtn.addEventListener('click', () => {
+        editRequestModal.classList.remove('hidden');
+        lockBodyScroll();
+    });
+
+    closeEditModalBtn.addEventListener('click', () => {
+        editRequestModal.classList.add('hidden');
+        unlockBodyScroll();
+    });
+
+    // 오버레이 클릭 시 모달 닫기
+    editRequestModal.addEventListener('click', (e) => {
+        if (e.target === editRequestModal) {
+            editRequestModal.classList.add('hidden');
+            unlockBodyScroll();
+        }
+    });
     requestEditLinkBtn.addEventListener('click', async () => {
         const email = editEmailInput.value;
         const password = editPasswordInput.value;
@@ -695,6 +733,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             editStatusMsg.className = result.status === 'success' ? 'status-msg success' : 'status-msg error';
             editStatusMsg.textContent = result.message;
+
+            // 성공 시 2초 후 모달 자동 닫기
+            if (result.status === 'success') {
+                setTimeout(() => {
+                    editRequestModal.classList.add('hidden');
+                    unlockBodyScroll();
+                    editEmailInput.value = '';
+                    editPasswordInput.value = '';
+                    editStatusMsg.textContent = '';
+                }, 2000);
+            }
         } catch(e) {
             editStatusMsg.className = 'status-msg error';
             editStatusMsg.textContent = '오류가 발생했습니다: ' + e.message;
@@ -782,6 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loadingModal.classList.remove('hidden');
+        lockBodyScroll();
         submitBtn.disabled = true;
 
         try {
@@ -853,6 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = false;
         } finally {
             loadingModal.classList.add('hidden');
+            unlockBodyScroll();
         }
     });
 
@@ -876,6 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("수정 토큰 발견:", editToken);
             currentEditMode = true;
             loadingModal.classList.remove('hidden');
+            lockBodyScroll();
             try {
                 console.log("GAS 백엔드에 수정 데이터 요청 중...");
                 const requestBody = { apiKey: API_KEY, action: 'getEditData', token: editToken };
@@ -905,6 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = window.location.pathname; // 실패 시 URL 초기화
             } finally {
                 loadingModal.classList.add('hidden');
+                unlockBodyScroll();
             }
         } else {
             console.log("수정 토큰 없음. 일반 제출 모드로 시작합니다.");
