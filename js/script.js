@@ -4,7 +4,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 설정 영역 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyb1C4ECIf8wtzDN-ZoZzPUjf0qP3Kfv6DKzcZX-6BMn0EBdS_vUcT6MJsBPMr8jV1KLA/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwCndupU2CbhkN6AgZJbmte9mXfwk8BP9KYpUsSWzhtzi2voZBIHwtEtD-CY451tSPM3Q/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 설정 영역 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     // -------------------------------------------------------------------
@@ -73,6 +73,27 @@ document.addEventListener('DOMContentLoaded', () => {
     resizeCanvas(signaturePadCanvas);
     const namePad = new SignaturePad(namePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
     const signaturePad = new SignaturePad(signaturePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
+
+    // 수정 모드에서 서명 패드에 그리기 시작할 때 기존 서명 미리보기 숨기기
+    if (namePad) {
+        namePad.addEventListener('beginStroke', () => {
+            if (currentEditMode && signaturePreview) {
+                signaturePreview.style.display = 'none';
+                signaturePreview.classList.add('hidden');
+                console.log('서명 패드 사용 시작 - 기존 서명 미리보기 숨김');
+            }
+        });
+    }
+
+    if (signaturePad) {
+        signaturePad.addEventListener('beginStroke', () => {
+            if (currentEditMode && signaturePreview) {
+                signaturePreview.style.display = 'none';
+                signaturePreview.classList.add('hidden');
+                console.log('서명 패드 사용 시작 - 기존 서명 미리보기 숨김');
+            }
+        });
+    }
 
     window.addEventListener('resize', () => {
         const nameData = namePad.toDataURL();
@@ -578,6 +599,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // --- 기존 이미지 미리보기 ---
         const setImagePreview = (imgElement, url, fallbackText) => {
+            if (!imgElement) {
+                console.warn(`이미지 요소를 찾을 수 없음: ${fallbackText}`);
+                return;
+            }
+
             if (url && url.trim() !== '') {
                 console.log(`이미지 로드 시도: ${fallbackText}`, url);
 
@@ -593,18 +619,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 imgElement.src = imageUrl;
                 imgElement.classList.remove('hidden');
+                imgElement.style.display = 'block'; // display를 명시적으로 설정
 
                 // 이미지 로드 실패 시 처리
                 imgElement.onerror = () => {
                     console.warn(`이미지 로드 실패: ${fallbackText}`, url);
                     imgElement.style.display = 'none';
+                    imgElement.classList.add('hidden');
                 };
 
                 imgElement.onload = () => {
                     console.log(`이미지 로드 성공: ${fallbackText}`);
+                    imgElement.style.display = 'block';
+                    imgElement.classList.remove('hidden');
                 };
             } else {
                 console.log(`이미지 URL 없음: ${fallbackText}`);
+                if (imgElement) {
+                    imgElement.style.display = 'none';
+                    imgElement.classList.add('hidden');
+                }
             }
         };
 
@@ -789,16 +823,24 @@ document.addEventListener('DOMContentLoaded', () => {
     clearNameBtn.addEventListener('click', () => {
         namePad.clear();
         console.log('이름 패드 지우기');
+
+        // 수정 모드에서 두 패드가 모두 비어있을 때 기존 서명 이미지 다시 표시
+        if (currentEditMode && signaturePreview && signaturePreview.src && signaturePad.isEmpty()) {
+            signaturePreview.classList.remove('hidden');
+            signaturePreview.style.display = 'block';
+            console.log('이름 패드 지움 - 기존 서명 미리보기 표시');
+        }
     });
 
     clearSignatureBtn.addEventListener('click', () => {
         signaturePad.clear();
         console.log('서명 패드 지우기');
 
-        // 수정 모드에서 서명을 지웠을 때 기존 서명 이미지 다시 표시
-        if (currentEditMode && signaturePreview && signaturePreview.src) {
+        // 수정 모드에서 두 패드가 모두 비어있을 때 기존 서명 이미지 다시 표시
+        if (currentEditMode && signaturePreview && signaturePreview.src && namePad.isEmpty()) {
             signaturePreview.classList.remove('hidden');
             signaturePreview.style.display = 'block';
+            console.log('서명 패드 지움 - 기존 서명 미리보기 표시');
         }
     });
     setupImagePreview(contractImageInput, contractPreview);
