@@ -32,7 +32,7 @@
             <!-- 카드 1: 중요 안내 -->
             <div class="floating-card">
                 <div class="card-header">
-                    <h3>📋 위임 동의서 안내</h3>
+                    <h3>위임 동의서 안내</h3>
                     <p>동의서 작성 전 반드시 확인해주세요</p>
                 </div>
                 <div class="card-content">
@@ -361,7 +361,7 @@
 
     <!-- 수정 요청 모달 -->
     <div id="edit-request-modal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content" onclick="event.stopPropagation()">
             <button id="close-edit-modal-btn" class="close-btn">&times;</button>
             <h2>제출 내용 수정</h2>
             <p>동의서 제출 시 입력했던 이메일 주소와 수정용 비밀번호(4자리)를 입력해주세요.</p>
@@ -380,7 +380,7 @@
 
     <!-- 이미지 크롭 모달 -->
     <div id="crop-modal" class="modal-overlay hidden">
-        <div class="crop-modal-content">
+        <div class="crop-modal-content" onclick="event.stopPropagation()">
             <div class="card-header">
                 <h3>📐 이미지 편집</h3>
                 <p>회전하거나 필요한 부분만 자를 수 있습니다</p>
