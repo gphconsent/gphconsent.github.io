@@ -4,7 +4,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 설정 영역 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxv0Re1Qx2euTse6SSRREzNePf4_XFqpVom8TZrzsjMsO2cEt5HCIoOFTbPN4CEhXlCCg/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx9zk8WOPwV2agVfOk7wXf0R7qO9Jn4wt8xV114M8SYwP1zNHgzPU1pAYsjWQp1jOZKgw/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 설정 영역 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     // -------------------------------------------------------------------
