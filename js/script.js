@@ -497,12 +497,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = cropper.getContainerData(); // {left, top, width, height}
         const img = cropper.getImageData(); // naturalWidth, naturalHeight
 
-        // 3) Calculate rotated bounding box dimensions
+        // 3) Calculate rotated bounding box dimensions (실제 렌더링된 크기 사용)
         const rad = (angle * Math.PI) / 180;
         const cos = Math.abs(Math.cos(rad));
         const sin = Math.abs(Math.sin(rad));
-        const boundW = img.naturalWidth * cos + img.naturalHeight * sin;
-        const boundH = img.naturalWidth * sin + img.naturalHeight * cos;
+        const boundW = img.width * cos + img.height * sin;
+        const boundH = img.width * sin + img.height * cos;
 
         // 4) 🔥 NEW: Dynamic container sizing based on rotated image dimensions
         const cropContainer = document.querySelector('.crop-container');
@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 6) 최적 스케일링 계산 (개선된 알고리즘)
             const scaleW = newContainer.width / boundW;
             const scaleH = newContainer.height / boundH;
-            const scale = Math.min(scaleW, scaleH) * 0.98; // 98%로 여유공간 확보
+            const scale = Math.min(scaleW, scaleH) * 0.85; // 85%로 이미지를 훨씬 크게 표시
 
             const targetW = boundW * scale;
             const targetH = boundH * scale;
