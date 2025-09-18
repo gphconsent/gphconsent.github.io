@@ -432,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let cropper = null;
     let activeInput = null;        // <input type="file"> which opened the modal
     let currentRotation = 0;       // absolute degree (0, 90, 180, 270)
+    let isInitialLoad = true;      // 새 이미지 업로드 시 true, 회전 시 false
     let objectUrl = null;          // for the original selected file (to revoke later)
 
     // ===== Helpers
@@ -457,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cropImgEl.removeAttribute('src');
         activeInput = null;
         currentRotation = 0;
+        isInitialLoad = true;
 
         // 로딩 상태 제거
         const cropContainer = document.querySelector('.crop-container');
@@ -465,6 +467,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initCropper() {
         if (cropper) cropper.destroy();
+
+        // 새 이미지 로드 시 상태 초기화
+        currentRotation = 0;
+        isInitialLoad = true;
 
         cropper = new Cropper(cropImgEl, {
         viewMode: 2,           // keep the image fully inside the container
@@ -475,16 +481,48 @@ document.addEventListener('DOMContentLoaded', () => {
         background: false,
         responsive: true,
         restore: false,        // don't restore previous crop on re-init
-        checkOrientation: true,
+        checkOrientation: false,  // EXIF 자동 회전 비활성화로 깔끔한 로딩
         toggleDragModeOnDblclick: false,
         ready() {
-            // On first ready, snap cropbox to actual image bounds.
-            fitImageToContainerAndSnapCropbox();
+            // 초기 업로드 vs 회전 시 다른 로직 적용
+            if (isInitialLoad) {
+                // 처음 업로드: 이미지를 캔버스에 꽉 채우기
+                initializeImageSize();
+            } else {
+                // 회전 시: 동적 캔버스 리사이징 적용
+                fitImageToContainerAndSnapCropbox();
+            }
         },
         });
     }
 
-    // --- 완전히 개선된 동적 캔버스 리사이징과 중앙 정렬 함수
+    // --- 🆕 초기 업로드 시 이미지를 캔버스에 꽉 채우는 함수
+    function initializeImageSize() {
+        if (!cropper) return;
+
+        const container = cropper.getContainerData();
+        const img = cropper.getImageData();
+
+        // 초기 업로드 시 85% 스케일로 이미지를 크게 표시
+        const scale = 0.85;
+        const targetW = img.naturalWidth * scale;
+        const targetH = img.naturalHeight * scale;
+
+        // 완벽한 중앙 정렬
+        const left = container.left + (container.width - targetW) / 2;
+        const top = container.top + (container.height - targetH) / 2;
+
+        cropper.setCanvasData({
+            left: Math.round(left),
+            top: Math.round(top),
+            width: Math.round(targetW),
+            height: Math.round(targetH)
+        });
+
+        console.log(`🎯 초기 이미지 크기 최적화: ${Math.round(targetW)}x${Math.round(targetH)} (스케일: ${scale})`);
+    }
+
+    // --- 완전히 개선된 동적 캔버스 리사이징과 중앙 정렬 함수 (회전용)
     function fitImageToContainerAndSnapCropbox() {
         if (!cropper) return;
 
@@ -493,8 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cropper.reset();
         cropper.rotateTo(angle);
 
-        // 2) Get container and image data
-        const container = cropper.getContainerData(); // {left, top, width, height}
+        // 2) Get image data
         const img = cropper.getImageData(); // naturalWidth, naturalHeight
 
         // 3) Calculate rotated bounding box dimensions (실제 렌더링된 크기 사용)
@@ -507,8 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4) 🔥 NEW: Dynamic container sizing based on rotated image dimensions
         const cropContainer = document.querySelector('.crop-container');
         if (cropContainer) {
-            // 원본 이미지의 종횡비
-            const originalAspectRatio = img.naturalWidth / img.naturalHeight;
             // 회전된 이미지의 종횡비
             const rotatedAspectRatio = boundW / boundH;
 
@@ -609,6 +644,9 @@ document.addEventListener('DOMContentLoaded', () => {
     rotateLeftBtn && rotateLeftBtn.addEventListener('click', () => {
         if (!cropper) return;
 
+        // 회전 시작: 초기 로드 상태 해제
+        isInitialLoad = false;
+
         // Add visual feedback during rotation
         const cropContainer = document.querySelector('.crop-container');
         cropContainer?.classList.add('rotating');
@@ -634,6 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     rotateRightBtn && rotateRightBtn.addEventListener('click', () => {
         if (!cropper) return;
+
+        // 회전 시작: 초기 로드 상태 해제
+        isInitialLoad = false;
 
         // Add visual feedback during rotation
         const cropContainer = document.querySelector('.crop-container');
