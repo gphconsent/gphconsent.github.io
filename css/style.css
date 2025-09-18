@@ -208,45 +208,6 @@ body {
     padding: 40px 25px;
 }
 
-/* 진행률 표시 (점 방식) */
-.progress-indicator {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin: 25px 0;
-}
-
-.progress-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #e9ecef;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.progress-dot.active {
-    background: #132D25;
-    transform: scale(1.2);
-    box-shadow: 0 0 0 4px rgba(19, 45, 37, 0.2);
-}
-
-.progress-dot.completed {
-    background: #6a140c;
-    transform: scale(1.1);
-}
-
-.progress-dot.completed::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-}
 
 /* 기존 header 스타일은 제거하고 대체 */
 header {
@@ -794,16 +755,6 @@ table tr:last-child td {
         margin-top: 15px;
     }
 
-    /* 진행 표시기 */
-    .progress-indicator {
-        margin: 20px 0;
-        gap: 12px;
-    }
-
-    .progress-dot {
-        width: 10px;
-        height: 10px;
-    }
 
     /* 이전 스타일 유지 */
     .form-section {
