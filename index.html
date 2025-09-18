@@ -17,13 +17,6 @@
 
     <!-- 메인 폼 컨테이너 -->
     <div class="container">
-        <!-- 진행률 표시 (점 방식) -->
-        <div class="progress-indicator">
-            <div class="progress-dot completed"></div>
-            <div class="progress-dot active"></div>
-            <div class="progress-dot"></div>
-            <div class="progress-dot"></div>
-        </div>
         <div class="text-right mb-20">
             <button type="button" id="open-edit-modal-btn" class="btn btn-link">이미 제출하셨나요? 내용 수정하기</button>
         </div>
@@ -321,18 +314,12 @@
                 <p class="description">위 모든 약관에 동의한다는 의미로, 아래 두 칸에 각각 <b>이름과 서명을 정자체로 직접 써주세요.</b>(수정 시, 새로 입력하지 않으면 기존 서명이 유지됩니다)</p>
                 
                 <div class="form-group">
-                    <label>이름 (정자체로 직접 쓰기)</label>
-                    <div class="signature-pad-container">
-                        <canvas id="name-pad"></canvas>
-                        <button type="button" id="clear-name" class="btn btn-secondary btn-sm" style="position: absolute; top: 10px; right: 10px;">지우기</button>
+                    <label>이름 및 서명 (정자체로 직접 쓰기)</label>
+                    <div id="signature-trigger-area" class="signature-placeholder">
+                        <img id="signature-result-img" src="" alt="서명 이미지" style="display: none; max-width: 100%; border-radius: 8px;">
+                        <span id="signature-placeholder-text">여기를 터치하여 서명을 시작하세요</span>
                     </div>
-                </div>
-                <div class="form-group">
-                     <label>서명</label>
-                    <div class="signature-pad-container">
-                        <canvas id="signature-pad"></canvas>
-                        <button type="button" id="clear-signature" class="btn btn-secondary btn-sm" style="position: absolute; top: 10px; right: 10px;">지우기</button>
-                    </div>
+                    <input type="hidden" id="signature-data-url" name="signatureDataUrl">
                     <div class="field-error hidden" id="signature-error"></div>
                 </div>
             </section>
@@ -404,6 +391,41 @@
                         편집 없이 사용
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 서명 모달 오버레이 -->
+    <div id="signature-modal-overlay">
+        <div id="signature-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">서명 입력</h3>
+                <p class="modal-subtitle">정자체로 이름과 서명을 각각 입력해 주세요</p>
+            </div>
+
+            <div class="signature-sections">
+                <!-- 이름 서명 섹션 -->
+                <div class="signature-section">
+                    <label class="signature-label">이름 (정자체로 입력)</label>
+                    <div class="canvas-container">
+                        <canvas id="modal-name-pad"></canvas>
+                    </div>
+                    <button type="button" id="name-modal-clear" class="btn btn-secondary btn-sm">지우기</button>
+                </div>
+
+                <!-- 서명 섹션 -->
+                <div class="signature-section">
+                    <label class="signature-label">서명</label>
+                    <div class="canvas-container">
+                        <canvas id="modal-signature-pad"></canvas>
+                    </div>
+                    <button type="button" id="signature-modal-clear" class="btn btn-secondary btn-sm">지우기</button>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" id="signature-modal-cancel" class="btn btn-outline-secondary">취소</button>
+                <button type="button" id="signature-modal-save" class="btn btn-primary">서명 완료</button>
             </div>
         </div>
     </div>
