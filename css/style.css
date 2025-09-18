@@ -1253,6 +1253,7 @@ body::after {
 
 .crop-container {
     width: 100%;
+    min-height: 300px;
     max-height: 65vh;
     display: flex;
     justify-content: center;
@@ -1260,6 +1261,9 @@ body::after {
     margin: 0 auto 20px auto;
     overflow: hidden;
     background: #f8f9fa;
+    border-radius: 8px;
+    transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
+    position: relative;
 }
 
 .crop-container img {
@@ -1269,18 +1273,60 @@ body::after {
     object-fit: contain;
 }
 
-/* Cropper.js 투명 배경 제거 */
+/* Cropper.js 스타일링 개선 */
 .crop-container .cropper-container {
     background: transparent !important;
+    transition: all 0.3s ease-in-out;
 }
 
 .crop-container .cropper-canvas {
     background: transparent !important;
+    transition: transform 0.3s ease-in-out;
+}
+
+.crop-container .cropper-canvas img {
+    transition: transform 0.3s ease-in-out;
 }
 
 .crop-container .cropper-modal {
     background: transparent !important;
     opacity: 0 !important;
+}
+
+/* 크롭 박스 스타일 개선 */
+.crop-container .cropper-crop-box {
+    transition: all 0.2s ease-in-out;
+}
+
+.crop-container .cropper-view-box {
+    outline: 2px solid #132D25;
+    outline-color: rgba(19, 45, 37, 0.8);
+    transition: outline-color 0.2s ease-in-out;
+}
+
+/* 회전 중 로딩 인디케이터 */
+.crop-container.rotating {
+    position: relative;
+}
+
+.crop-container.rotating::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid rgba(19, 45, 37, 0.3);
+    border-top: 3px solid #132D25;
+    border-radius: 50%;
+    animation: cropRotateLoading 1s linear infinite;
+    z-index: 1000;
+}
+
+@keyframes cropRotateLoading {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .crop-controls {
@@ -1328,6 +1374,7 @@ body::after {
     .crop-container {
         min-height: 250px;
         max-height: 50vh;
+        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
     }
 
     .crop-controls {
@@ -1362,6 +1409,7 @@ body::after {
     .crop-container {
         min-height: 200px;
         max-height: 45vh;
+        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
     }
 
     .crop-controls {

@@ -410,280 +410,283 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('배경 상호작용 복원 완료, 복원된 스크롤 위치:', savedScrollPosition);
     };
 
-    const showCropModal = (file, inputElement, previewElement) => {
-        // 브라우저 지원 여부 체크
-        if (typeof Cropper === 'undefined') {
-            console.error('Cropper.js library not loaded!');
-            alert('이미지 편집 기능을 불러오는데 실패했습니다. 편집 없이 진행합니다.');
-            showImagePreview(file, previewElement);
-            return;
+    // Legacy crop modal implementation removed - using new rotation-safe implementation below
+
+    // ===================================================================
+    // 새로운 회전 안전한 크롭 모달 구현
+    // ===================================================================
+    (function () {
+    // ===== Elements
+    const cropModal = document.getElementById('crop-modal');
+    const cropImgEl = document.getElementById('crop-image');
+    const rotateLeftBtn = document.getElementById('rotate-left-btn');
+    const rotateRightBtn = document.getElementById('rotate-right-btn');
+    const cropOkBtn = document.getElementById('crop-complete-btn');
+    const cropSkipBtn = document.getElementById('crop-skip-btn');
+    const cropCloseBtn = document.getElementById('close-crop-modal-btn');
+
+    const inputContract = document.getElementById('contractImage');
+    const inputNameChange = document.getElementById('nameChangeImage');
+
+    // ===== State
+    let cropper = null;
+    let activeInput = null;        // <input type="file"> which opened the modal
+    let currentRotation = 0;       // absolute degree (0, 90, 180, 270)
+    let objectUrl = null;          // for the original selected file (to revoke later)
+
+    // ===== Helpers
+    const clampRotation = (deg) => ((deg % 360) + 360) % 360; // -> 0..359
+
+    function openModal() {
+        cropModal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+        cropModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+
+        if (cropper) {
+        cropper.destroy();
+        cropper = null;
         }
-
-        // File API 지원 체크 (IE9 이하)
-        if (typeof FileReader === 'undefined') {
-            console.error('FileReader API not supported');
-            alert('이 브라우저는 파일 읽기를 지원하지 않습니다. 최신 브라우저를 사용해주세요.');
-            return;
+        if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
         }
+        cropImgEl.removeAttribute('src');
+        activeInput = null;
+        currentRotation = 0;
 
-        // Canvas API 지원 체크
-        const testCanvas = document.createElement('canvas');
-        if (!testCanvas.getContext || !testCanvas.getContext('2d')) {
-            console.error('Canvas API not supported');
-            alert('이 브라우저는 이미지 편집을 지원하지 않습니다. 편집 없이 진행합니다.');
-            showImagePreview(file, previewElement);
-            return;
-        }
+        // 로딩 상태 제거
+        const cropContainer = document.querySelector('.crop-container');
+        cropContainer?.classList.remove('rotating');
+    }
 
-        // 모달 요소들 가져오기
-        const cropModal = document.getElementById('crop-modal');
-        const cropImage = document.getElementById('crop-image');
-        const rotateLeftBtn = document.getElementById('rotate-left-btn');
-        const rotateRightBtn = document.getElementById('rotate-right-btn');
-        const cropCompleteBtn = document.getElementById('crop-complete-btn');
-        const cropSkipBtn = document.getElementById('crop-skip-btn');
-        const closeCropModalBtn = document.getElementById('close-crop-modal-btn');
+    function initCropper() {
+        if (cropper) cropper.destroy();
 
-        if (!cropModal || !cropImage) {
-            console.error('크롭 모달 요소를 찾을 수 없습니다.');
-            showImagePreview(file, previewElement);
-            return;
-        }
-
-        // 현재 상태 저장
-        currentInputFile = inputElement;
-        currentPreviewElement = previewElement;
-
-        // 파일을 이미지로 로드
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            cropImage.src = event.target.result;
-            cropModal.classList.remove('hidden');
-
-            // 배경 스크롤 및 상호작용 차단
-            lockBodyInteraction();
-
-            // 기존 Cropper 인스턴스 제거
-            if (currentCropper) {
-                currentCropper.destroy();
-                currentCropper = null;
-            }
-
-            // 이미지 로드 완료 후 Cropper 초기화
-            cropImage.onload = () => {
-                // [수정] 복잡한 크기 계산 로직을 모두 제거하고 Cropper.js 옵션을 단순화합니다.
-
-                currentCropper = new Cropper(cropImage, {
-                    // --- 동작 관련 옵션 ---
-                    viewMode: 1,
-                    dragMode: 'crop',
-                    movable: false,
-                    scalable: false,
-                    zoomable: false,
-                    rotatable: true,
-
-                    // --- 크롭 박스 관련 옵션 ---
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    autoCropArea: 1,
-
-                    // --- 기타 UI 및 성능 옵션 ---
-                    background: false,
-                    responsive: true,
-                    guides: true,
-                    center: true,
-                    checkOrientation: false
-                });
-                console.log('Cropper.js 초기화 완료 (단순화된 옵션 적용)');
-            };
-        };
-        reader.readAsDataURL(file);
-
-        // 이벤트 리스너 설정 (중복 등록 방지)
-        const newRotateLeftBtn = rotateLeftBtn.cloneNode(true);
-        const newRotateRightBtn = rotateRightBtn.cloneNode(true);
-        const newCropCompleteBtn = cropCompleteBtn.cloneNode(true);
-        const newCropSkipBtn = cropSkipBtn.cloneNode(true);
-        const newCloseCropModalBtn = closeCropModalBtn.cloneNode(true);
-
-        rotateLeftBtn.parentNode.replaceChild(newRotateLeftBtn, rotateLeftBtn);
-        rotateRightBtn.parentNode.replaceChild(newRotateRightBtn, rotateRightBtn);
-        cropCompleteBtn.parentNode.replaceChild(newCropCompleteBtn, cropCompleteBtn);
-        cropSkipBtn.parentNode.replaceChild(newCropSkipBtn, cropSkipBtn);
-        closeCropModalBtn.parentNode.replaceChild(newCloseCropModalBtn, closeCropModalBtn);
-
-        // 디바운싱을 위한 변수
-        let rotateTimeout = null;
-
-        // 좌회전 (반시계방향 90도) - 디바운싱 적용
-        newRotateLeftBtn.addEventListener('click', () => {
-            if (currentCropper && !rotateTimeout) {
-                newRotateLeftBtn.disabled = true;
-                currentCropper.rotate(-90);
-                console.log('이미지 좌회전 (-90도)');
-
-                rotateTimeout = setTimeout(() => {
-                    newRotateLeftBtn.disabled = false;
-                    rotateTimeout = null;
-                }, 500); // 500ms 디바운싱
-            }
+        cropper = new Cropper(cropImgEl, {
+        viewMode: 2,           // keep the image fully inside the container
+        dragMode: 'move',
+        autoCrop: true,
+        autoCropArea: 1,       // initial crop = whole image
+        modal: false,          // no gray mask (we control background via CSS)
+        background: false,
+        responsive: true,
+        restore: false,        // don't restore previous crop on re-init
+        checkOrientation: true,
+        toggleDragModeOnDblclick: false,
+        ready() {
+            // On first ready, snap cropbox to actual image bounds.
+            fitImageToContainerAndSnapCropbox();
+        },
         });
+    }
 
-        // 우회전 (시계방향 90도) - 디바운싱 적용
-        newRotateRightBtn.addEventListener('click', () => {
-            if (currentCropper && !rotateTimeout) {
-                newRotateRightBtn.disabled = true;
-                currentCropper.rotate(90);
-                console.log('이미지 우회전 (+90도)');
+    // --- Enhanced rotation-safe image container and crop box fitting
+    function fitImageToContainerAndSnapCropbox() {
+        if (!cropper) return;
 
-                rotateTimeout = setTimeout(() => {
-                    newRotateRightBtn.disabled = false;
-                    rotateTimeout = null;
-                }, 500); // 500ms 디바운싱
-            }
-        });
+        // 1) Reset transform then re-apply the absolute rotation so Cropper recalculates layout.
+        const angle = currentRotation;
+        cropper.reset();
+        cropper.rotateTo(angle);
 
-        // 편집 완료
-        newCropCompleteBtn.addEventListener('click', () => {
-            if (currentCropper) {
-                try {
-                    const canvas = currentCropper.getCroppedCanvas({
-                        maxWidth: 2048,
-                        maxHeight: 2048,
-                        imageSmoothingEnabled: true,
-                        imageSmoothingQuality: 'high'
-                    });
+        // 2) Get container and image data
+        const container = cropper.getContainerData(); // {left, top, width, height}
+        const img = cropper.getImageData(); // naturalWidth, naturalHeight
 
-                    if (!canvas) {
-                        throw new Error('Canvas 생성 실패');
-                    }
+        // 3) Calculate rotated bounding box dimensions
+        const rad = (angle * Math.PI) / 180;
+        const cos = Math.abs(Math.cos(rad));
+        const sin = Math.abs(Math.sin(rad));
+        const boundW = img.naturalWidth * cos + img.naturalHeight * sin;
+        const boundH = img.naturalWidth * sin + img.naturalHeight * cos;
 
-                    // Blob 생성 지원 체크
-                    if (typeof canvas.toBlob === 'function') {
-                        canvas.toBlob((blob) => {
-                            if (!blob) {
-                                console.error('Blob 생성 실패');
-                                alert('이미지 처리 중 오류가 발생했습니다.');
-                                return;
-                            }
+        // 4) Dynamic container adjustment for extreme aspect ratios
+        const isLandscape = boundW > boundH;
+        const aspectRatio = boundW / boundH;
 
-                            // 새로운 파일 객체 생성
-                            const croppedFile = new File([blob], file.name, {
-                                type: file.type || 'image/jpeg',
-                                lastModified: Date.now()
-                            });
+        // Adjust container height dynamically based on rotation and aspect ratio
+        const cropContainer = document.querySelector('.crop-container');
+        if (cropContainer) {
+            let containerHeight;
 
-                            // 입력 요소의 파일 업데이트
-                            updateInputFile(currentInputFile, croppedFile);
-
-                            // 미리보기 업데이트
-                            showImagePreview(croppedFile, currentPreviewElement);
-
-                            // 모달 닫기
-                            closeCropModal();
-                            console.log('이미지 편집 완료 및 파일 교체');
-                        }, file.type || 'image/jpeg', 0.9);
-                    } else {
-                        // toBlob이 지원되지 않는 경우 toDataURL 사용 (IE 호환성)
-                        const dataUrl = canvas.toDataURL(file.type || 'image/jpeg', 0.9);
-                        const byteString = atob(dataUrl.split(',')[1]);
-                        const arrayBuffer = new ArrayBuffer(byteString.length);
-                        const ia = new Uint8Array(arrayBuffer);
-                        for (let i = 0; i < byteString.length; i++) {
-                            ia[i] = byteString.charCodeAt(i);
-                        }
-                        const blob = new Blob([arrayBuffer], { type: file.type || 'image/jpeg' });
-
-                        const croppedFile = new File([blob], file.name, {
-                            type: file.type || 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-
-                        updateInputFile(currentInputFile, croppedFile);
-                        showImagePreview(croppedFile, currentPreviewElement);
-                        closeCropModal();
-                        console.log('이미지 편집 완료 (fallback 방식)');
-                    }
-                } catch (error) {
-                    console.error('이미지 편집 중 오류:', error);
-                    alert('이미지 편집 중 오류가 발생했습니다: ' + error.message);
-                }
-            }
-        });
-
-        // 편집 없이 사용
-        newCropSkipBtn.addEventListener('click', () => {
-            showImagePreview(file, currentPreviewElement);
-            closeCropModal();
-            console.log('이미지 편집 건너뛰기');
-        });
-
-        // 모달 닫기 버튼 클릭
-        newCloseCropModalBtn.addEventListener('click', () => {
-            // 파일 선택을 취소하고 모달 닫기
-            currentInputFile.value = '';
-            closeCropModal();
-            console.log('크롭 모달 닫기 및 파일 선택 취소');
-        });
-
-        // 오버레이 클릭 시 모달 닫기
-        cropModal.addEventListener('click', (e) => {
-            if (e.target === cropModal) {
-                currentInputFile.value = '';
-                closeCropModal();
-                console.log('오버레이 클릭으로 크롭 모달 닫기');
-            }
-        });
-    };
-
-    const closeCropModal = () => {
-        const cropModal = document.getElementById('crop-modal');
-        if (cropModal) {
-            cropModal.classList.add('hidden');
-        }
-
-        // 배경 스크롤 및 상호작용 차단 해제
-        unlockBodyInteraction();
-
-        if (currentCropper) {
-            currentCropper.destroy();
-            currentCropper = null;
-        }
-        currentInputFile = null;
-        currentPreviewElement = null;
-
-        console.log('크롭 모달 닫기 및 배경 스크롤 복원 완료');
-    };
-
-    const updateInputFile = (inputElement, newFile) => {
-        // FileList는 읽기 전용이므로 DataTransfer를 사용해 우회
-        // Safari 및 구형 브라우저 호환성을 위한 체크
-        try {
-            if (typeof DataTransfer !== 'undefined') {
-                const dt = new DataTransfer();
-                dt.items.add(newFile);
-                inputElement.files = dt.files;
+            // Handle extreme aspect ratios after rotation
+            if (isLandscape && aspectRatio > 2.5) {
+                // Very wide images - reduce height
+                containerHeight = Math.min(container.height, window.innerHeight * 0.4);
+            } else if (!isLandscape && aspectRatio < 0.4) {
+                // Very tall images - increase height
+                containerHeight = Math.min(window.innerHeight * 0.7, container.height * 1.2);
             } else {
-                // DataTransfer를 지원하지 않는 경우 파일을 별도로 저장
-                inputElement._croppedFile = newFile;
+                // Normal aspect ratios
+                containerHeight = Math.min(window.innerHeight * 0.65, container.height);
             }
-            console.log(`입력 파일 업데이트: ${inputElement.id}`, newFile.name);
-        } catch (error) {
-            console.warn('DataTransfer 사용 실패, 대체 방법 사용:', error);
-            inputElement._croppedFile = newFile;
-        }
-    };
 
-    const showImagePreview = (file, previewElement) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            previewElement.src = event.target.result;
-            previewElement.classList.remove('hidden');
-            previewElement.style.display = 'block';
-            console.log('이미지 미리보기 표시');
+            // Apply the calculated height
+            cropContainer.style.maxHeight = `${containerHeight}px`;
+
+            // Force container refresh
+            container.height = containerHeight;
+        }
+
+        // 5) Calculate optimal scaling with improved algorithm
+        const scaleW = container.width / boundW;
+        const scaleH = container.height / boundH;
+        const scale = Math.min(scaleW, scaleH) * 0.95; // 5% padding for better UX
+
+        const targetW = boundW * scale;
+        const targetH = boundH * scale;
+        const left = container.left + (container.width - targetW) / 2;
+        const top = container.top + (container.height - targetH) / 2;
+
+        // 6) Apply calculated canvas box with animation support
+        cropper.setCanvasData({
+            left: left,
+            top: top,
+            width: targetW,
+            height: targetH
+        });
+
+        // 7) Snap cropbox to exactly match the visible image area
+        // Small delay to ensure canvas is properly set
+        setTimeout(() => {
+            const canvas = cropper.getCanvasData();
+            cropper.setCropBoxData({
+                left: canvas.left,
+                top: canvas.top,
+                width: canvas.width,
+                height: canvas.height
+            });
+        }, 10);
+
+        console.log(`Rotation: ${angle}°, Scale: ${scale.toFixed(2)}, Dimensions: ${Math.round(targetW)}x${Math.round(targetH)}`);
+    }
+
+    // ===== Event wiring
+    function handleFileChange(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        activeInput = e.target; // remember which input opened the modal
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(file);
+
+        cropImgEl.onload = () => {
+        initCropper();
         };
-        reader.readAsDataURL(file);
-    };
+
+        openModal();
+        cropImgEl.src = objectUrl;
+    }
+
+    inputContract && inputContract.addEventListener('change', handleFileChange);
+    inputNameChange && inputNameChange.addEventListener('change', handleFileChange);
+
+    rotateLeftBtn && rotateLeftBtn.addEventListener('click', () => {
+        if (!cropper) return;
+
+        // Add visual feedback during rotation
+        const cropContainer = document.querySelector('.crop-container');
+        cropContainer?.classList.add('rotating');
+        rotateLeftBtn.disabled = true;
+        rotateRightBtn.disabled = true;
+
+        currentRotation = clampRotation(currentRotation - 90);
+
+        // Execute rotation with visual feedback
+        setTimeout(() => {
+            fitImageToContainerAndSnapCropbox();
+
+            // Remove loading state after rotation completes
+            setTimeout(() => {
+                cropContainer?.classList.remove('rotating');
+                rotateLeftBtn.disabled = false;
+                rotateRightBtn.disabled = false;
+            }, 300);
+        }, 50);
+    });
+
+    rotateRightBtn && rotateRightBtn.addEventListener('click', () => {
+        if (!cropper) return;
+
+        // Add visual feedback during rotation
+        const cropContainer = document.querySelector('.crop-container');
+        cropContainer?.classList.add('rotating');
+        rotateLeftBtn.disabled = true;
+        rotateRightBtn.disabled = true;
+
+        currentRotation = clampRotation(currentRotation + 90);
+
+        // Execute rotation with visual feedback
+        setTimeout(() => {
+            fitImageToContainerAndSnapCropbox();
+
+            // Remove loading state after rotation completes
+            setTimeout(() => {
+                cropContainer?.classList.remove('rotating');
+                rotateLeftBtn.disabled = false;
+                rotateRightBtn.disabled = false;
+            }, 300);
+        }, 50);
+    });
+
+    cropOkBtn && cropOkBtn.addEventListener('click', () => {
+        if (!cropper || !activeInput) return;
+
+        const canvas = cropper.getCroppedCanvas({ imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+        // choose correct preview target
+        const previewId = activeInput.id === 'contractImage' ? 'contract-preview' : 'nameChange-preview';
+        const preview = document.getElementById(previewId);
+        if (preview) {
+        preview.src = dataUrl;
+        preview.classList.remove('hidden');
+        }
+
+        // expose the cropped result for form submission logic (if any)
+        activeInput.dataset.cropped = '1';
+        activeInput.dataset.croppedDataUrl = dataUrl;
+
+        closeModal();
+    });
+
+    cropSkipBtn && cropSkipBtn.addEventListener('click', () => {
+        if (!activeInput) return;
+
+        const url = objectUrl; // original image as-is
+        const previewId = activeInput.id === 'contractImage' ? 'contract-preview' : 'nameChange-preview';
+        const preview = document.getElementById(previewId);
+        if (preview && url) {
+        preview.src = url;
+        preview.classList.remove('hidden');
+        }
+
+        activeInput.dataset.cropped = '';
+        activeInput.dataset.croppedDataUrl = '';
+
+        closeModal();
+    });
+
+    cropCloseBtn && cropCloseBtn.addEventListener('click', closeModal);
+    // Optional: close when clicking the dimmed area
+    cropModal && cropModal.addEventListener('click', (e) => {
+        if (e.target === cropModal) closeModal();
+    });
+
+    // Refit on viewport changes while modal is open (debounced)
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (!cropper || cropModal.classList.contains('hidden')) return;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+        fitImageToContainerAndSnapCropbox();
+        }, 120);
+    });
+    })();
 
     // ===================================================================
     // 수정 모드 데이터 처리
