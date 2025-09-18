@@ -1262,8 +1262,9 @@ body::after {
     overflow: hidden;
     background: #f8f9fa;
     border-radius: 8px;
-    transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
+    transition: all 0.4s ease-in-out;
     position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .crop-container img {
@@ -1374,7 +1375,8 @@ body::after {
     .crop-container {
         min-height: 250px;
         max-height: 50vh;
-        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
+        transition: all 0.4s ease-in-out;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
     }
 
     .crop-controls {
@@ -1409,7 +1411,8 @@ body::after {
     .crop-container {
         min-height: 200px;
         max-height: 45vh;
-        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out;
+        transition: all 0.4s ease-in-out;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     }
 
     .crop-controls {

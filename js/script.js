@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Enhanced rotation-safe image container and crop box fitting
+    // --- 완전히 개선된 동적 캔버스 리사이징과 중앙 정렬 함수
     function fitImageToContainerAndSnapCropbox() {
         if (!cropper) return;
 
@@ -504,65 +504,86 @@ document.addEventListener('DOMContentLoaded', () => {
         const boundW = img.naturalWidth * cos + img.naturalHeight * sin;
         const boundH = img.naturalWidth * sin + img.naturalHeight * cos;
 
-        // 4) Dynamic container adjustment for extreme aspect ratios
-        const isLandscape = boundW > boundH;
-        const aspectRatio = boundW / boundH;
-
-        // Adjust container height dynamically based on rotation and aspect ratio
+        // 4) 🔥 NEW: Dynamic container sizing based on rotated image dimensions
         const cropContainer = document.querySelector('.crop-container');
         if (cropContainer) {
-            let containerHeight;
+            // 원본 이미지의 종횡비
+            const originalAspectRatio = img.naturalWidth / img.naturalHeight;
+            // 회전된 이미지의 종횡비
+            const rotatedAspectRatio = boundW / boundH;
 
-            // Handle extreme aspect ratios after rotation
-            if (isLandscape && aspectRatio > 2.5) {
-                // Very wide images - reduce height
-                containerHeight = Math.min(container.height, window.innerHeight * 0.4);
-            } else if (!isLandscape && aspectRatio < 0.4) {
-                // Very tall images - increase height
-                containerHeight = Math.min(window.innerHeight * 0.7, container.height * 1.2);
+            // 캔버스를 회전된 이미지에 맞춰 동적으로 조정
+            let newContainerWidth, newContainerHeight;
+
+            // 기본 최대 크기 설정
+            const maxWidth = Math.min(window.innerWidth * 0.85, 800);
+            const maxHeight = Math.min(window.innerHeight * 0.7, 600);
+
+            // 회전된 이미지 비율에 맞춰 컨테이너 크기 계산
+            if (rotatedAspectRatio > 1.5) {
+                // 가로가 긴 이미지: 가로 기준으로 크기 설정
+                newContainerWidth = maxWidth;
+                newContainerHeight = Math.min(maxWidth / rotatedAspectRatio, maxHeight);
+            } else if (rotatedAspectRatio < 0.7) {
+                // 세로가 긴 이미지: 세로 기준으로 크기 설정
+                newContainerHeight = maxHeight;
+                newContainerWidth = Math.min(maxHeight * rotatedAspectRatio, maxWidth);
             } else {
-                // Normal aspect ratios
-                containerHeight = Math.min(window.innerHeight * 0.65, container.height);
+                // 정사각형에 가까운 이미지: 균형있게 설정
+                const minDimension = Math.min(maxWidth, maxHeight);
+                newContainerWidth = minDimension;
+                newContainerHeight = minDimension;
             }
 
-            // Apply the calculated height
-            cropContainer.style.maxHeight = `${containerHeight}px`;
+            // 최소 크기 보장
+            newContainerWidth = Math.max(newContainerWidth, 300);
+            newContainerHeight = Math.max(newContainerHeight, 200);
 
-            // Force container refresh
-            container.height = containerHeight;
+            // 캔버스 크기 업데이트 (부드러운 전환)
+            cropContainer.style.width = `${newContainerWidth}px`;
+            cropContainer.style.maxHeight = `${newContainerHeight}px`;
+            cropContainer.style.height = `${newContainerHeight}px`;
+
+            console.log(`📐 캔버스 리사이징: ${Math.round(newContainerWidth)}x${Math.round(newContainerHeight)} (비율: ${rotatedAspectRatio.toFixed(2)})`);
         }
 
-        // 5) Calculate optimal scaling with improved algorithm
-        const scaleW = container.width / boundW;
-        const scaleH = container.height / boundH;
-        const scale = Math.min(scaleW, scaleH) * 0.95; // 5% padding for better UX
-
-        const targetW = boundW * scale;
-        const targetH = boundH * scale;
-        const left = container.left + (container.width - targetW) / 2;
-        const top = container.top + (container.height - targetH) / 2;
-
-        // 6) Apply calculated canvas box with animation support
-        cropper.setCanvasData({
-            left: left,
-            top: top,
-            width: targetW,
-            height: targetH
-        });
-
-        // 7) Snap cropbox to exactly match the visible image area
-        // Small delay to ensure canvas is properly set
+        // 5) 새로운 컨테이너 크기로 다시 컨테이너 데이터 가져오기
         setTimeout(() => {
-            const canvas = cropper.getCanvasData();
-            cropper.setCropBoxData({
-                left: canvas.left,
-                top: canvas.top,
-                width: canvas.width,
-                height: canvas.height
-            });
-        }, 10);
+            const newContainer = cropper.getContainerData();
 
-        console.log(`Rotation: ${angle}°, Scale: ${scale.toFixed(2)}, Dimensions: ${Math.round(targetW)}x${Math.round(targetH)}`);
+            // 6) 최적 스케일링 계산 (개선된 알고리즘)
+            const scaleW = newContainer.width / boundW;
+            const scaleH = newContainer.height / boundH;
+            const scale = Math.min(scaleW, scaleH) * 0.98; // 98%로 여유공간 확보
+
+            const targetW = boundW * scale;
+            const targetH = boundH * scale;
+
+            // 7) 🎯 완벽한 중앙 정렬 계산
+            const left = newContainer.left + (newContainer.width - targetW) / 2;
+            const top = newContainer.top + (newContainer.height - targetH) / 2;
+
+            // 8) 캔버스 데이터 적용 (중앙 정렬과 함께)
+            cropper.setCanvasData({
+                left: Math.round(left),
+                top: Math.round(top),
+                width: Math.round(targetW),
+                height: Math.round(targetH)
+            });
+
+            // 9) 크롭박스를 이미지에 정확히 맞춤
+            setTimeout(() => {
+                const canvas = cropper.getCanvasData();
+                cropper.setCropBoxData({
+                    left: canvas.left,
+                    top: canvas.top,
+                    width: canvas.width,
+                    height: canvas.height
+                });
+
+                console.log(`✅ 회전 완료: ${angle}°, 스케일: ${scale.toFixed(3)}, 중앙정렬: ${Math.round(left)},${Math.round(top)}`);
+            }, 50);
+        }, 100); // 캔버스 크기 변경 후 잠시 대기
     }
 
     // ===== Event wiring
@@ -595,17 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
         rotateRightBtn.disabled = true;
 
         currentRotation = clampRotation(currentRotation - 90);
+        console.log(`🔄 좌회전 시작: ${currentRotation}°`);
 
-        // Execute rotation with visual feedback
+        // Execute rotation with enhanced visual feedback
         setTimeout(() => {
             fitImageToContainerAndSnapCropbox();
 
-            // Remove loading state after rotation completes
+            // Remove loading state after rotation completes (longer delay for canvas resizing)
             setTimeout(() => {
                 cropContainer?.classList.remove('rotating');
                 rotateLeftBtn.disabled = false;
                 rotateRightBtn.disabled = false;
-            }, 300);
+                console.log(`✅ 좌회전 완료: ${currentRotation}°`);
+            }, 500); // 더 긴 딜레이로 애니메이션 완료 대기
         }, 50);
     });
 
@@ -619,17 +642,19 @@ document.addEventListener('DOMContentLoaded', () => {
         rotateRightBtn.disabled = true;
 
         currentRotation = clampRotation(currentRotation + 90);
+        console.log(`🔄 우회전 시작: ${currentRotation}°`);
 
-        // Execute rotation with visual feedback
+        // Execute rotation with enhanced visual feedback
         setTimeout(() => {
             fitImageToContainerAndSnapCropbox();
 
-            // Remove loading state after rotation completes
+            // Remove loading state after rotation completes (longer delay for canvas resizing)
             setTimeout(() => {
                 cropContainer?.classList.remove('rotating');
                 rotateLeftBtn.disabled = false;
                 rotateRightBtn.disabled = false;
-            }, 300);
+                console.log(`✅ 우회전 완료: ${currentRotation}°`);
+            }, 500); // 더 긴 딜레이로 애니메이션 완료 대기
         }, 50);
     });
 
