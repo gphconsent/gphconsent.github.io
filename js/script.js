@@ -261,80 +261,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 이미지 로드 완료 후 Cropper 초기화
             cropImage.onload = () => {
-                // 이미지 크기 기반 컨테이너 정확한 크기 조정
-                const imageWidth = cropImage.naturalWidth;
-                const imageHeight = cropImage.naturalHeight;
-
-                // 컨테이너 크기를 이미지에 정확히 맞춤 (투명 배경 제거)
-                const cropContainer = cropImage.parentElement;
-                const maxModalWidth = window.innerWidth * 0.85;
-                const maxModalHeight = window.innerHeight * 0.6;
-
-                let displayWidth, displayHeight;
-
-                // 화면 크기에 맞춰 이미지 크기 계산하되, 비율은 정확히 유지
-                if (imageWidth <= maxModalWidth && imageHeight <= maxModalHeight) {
-                    // 이미지가 화면보다 작으면 원본 크기 사용
-                    displayWidth = imageWidth;
-                    displayHeight = imageHeight;
-                } else {
-                    // 이미지가 크면 비율 유지하며 축소
-                    const scaleX = maxModalWidth / imageWidth;
-                    const scaleY = maxModalHeight / imageHeight;
-                    const scale = Math.min(scaleX, scaleY);
-
-                    displayWidth = Math.floor(imageWidth * scale);
-                    displayHeight = Math.floor(imageHeight * scale);
-                }
-
-                // 컨테이너를 이미지 표시 크기에 정확히 맞춤
-                cropContainer.style.width = displayWidth + 'px';
-                cropContainer.style.height = displayHeight + 'px';
-                cropContainer.style.maxWidth = 'none';
-                cropContainer.style.maxHeight = 'none';
+                // [수정] 복잡한 크기 계산 로직을 모두 제거하고 Cropper.js 옵션을 단순화합니다.
 
                 currentCropper = new Cropper(cropImage, {
-                    aspectRatio: NaN, // 자유 비율
+                    // --- 동작 관련 옵션 ---
                     viewMode: 1,
-                    movable: false, // 이미지 움직임 방지
-                    scalable: false, // 성능 향상을 위해 비활성화
-                    rotatable: true, // 회전만 허용
-                    zoomable: false, // 성능 향상을 위해 비활성화
+                    dragMode: 'crop',
+                    movable: false,
+                    scalable: false,
+                    zoomable: false,
+                    rotatable: true,
+
+                    // --- 크롭 박스 관련 옵션 ---
                     cropBoxMovable: true,
                     cropBoxResizable: true,
+                    autoCropArea: 1,
+
+                    // --- 기타 UI 및 성능 옵션 ---
+                    background: false,
                     responsive: true,
-                    restore: false,
-                    checkOrientation: false,
-                    modal: false, // 투명 배경 제거
                     guides: true,
                     center: true,
-                    background: false, // 투명 배경 제거
-                    autoCropArea: 1.0, // 전체 이미지로 시작
-                    minContainerWidth: 200,
-                    minContainerHeight: 200,
-                    dragMode: 'crop', // 크롭 모드로 고정
-                    // 모바일 터치 최적화
-                    wheelZoomRatio: 0,
-                    // Safari 호환성 개선
-                    checkCrossOrigin: false,
-                    // 터치 디바이스에서 더 나은 UX
-                    toggleDragModeOnDblclick: false,
-                    // 크롭 박스가 전체 이미지를 덮도록 ready 이벤트에서 강제 설정
-                    ready: function() {
-                        // 크롭 박스를 전체 이미지 크기로 설정
-                        this.cropper.setData({
-                            x: 0,
-                            y: 0,
-                            width: imageWidth,
-                            height: imageHeight,
-                            rotate: 0,
-                            scaleX: 1,
-                            scaleY: 1
-                        });
-                        console.log('크롭 박스를 전체 이미지로 설정 완료');
-                    }
+                    checkOrientation: false
                 });
-                console.log('Cropper.js 초기화 완료');
+                console.log('Cropper.js 초기화 완료 (단순화된 옵션 적용)');
             };
         };
         reader.readAsDataURL(file);
