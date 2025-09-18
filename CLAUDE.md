@@ -114,3 +114,4 @@ When modifying this codebase:
 3. Ensure responsive design remains intact
 4. Validate form data structure matches expected GAS backend format
 5. Use Context7 MCP for Google Apps Script implementation guidance
+6. 모든 브라우저에서 호환이 가능한 방식으로 설계하고 코드를 구현하라.

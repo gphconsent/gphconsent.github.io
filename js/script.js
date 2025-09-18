@@ -69,10 +69,38 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.style.height = `${rect.height}px`;
     };
 
+    // 텍스트 선택 방지를 위한 이벤트 처리 함수
+    const preventTextSelection = (canvas) => {
+        // 컨텍스트 메뉴 방지 (우클릭/길게 누르기 메뉴)
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+
+        // 텍스트 선택 시작 방지
+        canvas.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+
+        // 드래그 시작 방지
+        canvas.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+    };
+
     resizeCanvas(namePadCanvas);
     resizeCanvas(signaturePadCanvas);
     const namePad = new SignaturePad(namePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
     const signaturePad = new SignaturePad(signaturePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
+
+    // 서명 패드에 텍스트 선택 방지 적용
+    preventTextSelection(namePadCanvas);
+    preventTextSelection(signaturePadCanvas);
 
     // 수정 모드에서 서명 패드에 그리기 시작할 때 기존 서명 미리보기 숨기기
     if (namePad) {

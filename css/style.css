@@ -420,6 +420,15 @@ input[type="file"] {
     margin-bottom: 20px;
     overflow: hidden;
     min-height: 200px;
+
+    /* 텍스트 선택 방지 (표준 속성) */
+    user-select: none;
+    touch-action: none;
+
+    /* 웹킷 기반 브라우저 최적화 */
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
 }
 
 canvas {
@@ -427,7 +436,19 @@ canvas {
     height: 200px;
     border-radius: 10px;
     display: block;
+
+    /* 터치 최적화 (표준 속성) */
     touch-action: none;
+    user-select: none;
+
+    /* 웹킷 기반 브라우저 최적화 */
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+
+    /* 추가 최적화 */
+    -webkit-user-drag: none;
+    user-drag: none;
 }
 
 .submit-container {
@@ -667,14 +688,29 @@ table tr:last-child td {
     /* 서명 패드 모바일 */
     .signature-pad-container {
         min-height: 180px;
+
+        /* 모바일 터치 최적화 강화 */
         touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+
         border-radius: 12px;
         border: 2px solid #ddd;
     }
 
     .signature-pad-container canvas {
-        touch-action: none;
         height: 180px;
+
+        /* 모바일 캔버스 터치 최적화 */
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
+        user-drag: none;
     }
 
     /* 터치 친화적 버튼 */
