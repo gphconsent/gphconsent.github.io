@@ -23,11 +23,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmVerificationBtn = document.getElementById('confirm-verification-btn');
     const emailStatusMsg = document.getElementById('email-status-msg');
 
-    // --- 서명패드 관련 요소 ---
-    const namePadCanvas = document.getElementById('name-pad');
-    const signaturePadCanvas = document.getElementById('signature-pad');
-    const clearNameBtn = document.getElementById('clear-name');
-    const clearSignatureBtn = document.getElementById('clear-signature');
+    // --- 서명패드 관련 요소 (모달 기반) ---
+    const signatureTriggerArea = document.getElementById('signature-trigger-area');
+    const signatureModalOverlay = document.getElementById('signature-modal-overlay');
+    const modalNameCanvas = document.getElementById('modal-name-pad');
+    const modalSignatureCanvas = document.getElementById('modal-signature-pad');
+    const nameModalClearBtn = document.getElementById('name-modal-clear');
+    const signatureModalClearBtn = document.getElementById('signature-modal-clear');
+    const signatureModalSaveBtn = document.getElementById('signature-modal-save');
+    const signatureModalCancelBtn = document.getElementById('signature-modal-cancel');
+    const signatureResultImg = document.getElementById('signature-result-img');
+    const signaturePlaceholderText = document.getElementById('signature-placeholder-text');
+    const signatureDataUrlInput = document.getElementById('signature-data-url');
     const signaturePreview = document.getElementById('signature-preview');
 
     // --- 수정 기능 관련 요소 ---
@@ -52,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let serverVerificationCode = '';
     let currentEditMode = false;
     let originalEmail = ''; // 수정 모드에서 원본 이메일 저장
-    let scrollPosition = 0; // 모달 열기 전 스크롤 위치 저장
 
     // --- 서명패드 초기화 ---
     if (typeof SignaturePad === 'undefined') {
@@ -91,46 +97,174 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             return false;
         });
+
+        // iOS Safari 돋보기 및 길게 누르기 방지
+        canvas.addEventListener('touchstart', (e) => {
+            // 길게 누르기 방지를 위한 터치 이벤트 처리
+            e.stopPropagation();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.stopPropagation();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.stopPropagation();
+        }, { passive: false });
+
+        // iOS 웹킷 전용 이벤트 차단
+        canvas.addEventListener('webkitmouseforcedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+
+        canvas.addEventListener('webkitmouseforceup', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
     };
 
-    resizeCanvas(namePadCanvas);
-    resizeCanvas(signaturePadCanvas);
-    const namePad = new SignaturePad(namePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
-    const signaturePad = new SignaturePad(signaturePadCanvas, { backgroundColor: 'rgb(255, 255, 255)', minWidth: 1, maxWidth: 2.5 });
+    // 모달 서명 패드 변수
+    let modalNamePad, modalSignaturePad;
+    let currentSignatureData = null;
 
-    // 서명 패드에 텍스트 선택 방지 적용
-    preventTextSelection(namePadCanvas);
-    preventTextSelection(signaturePadCanvas);
+    const initializeModalSignaturePads = () => {
+        if (!modalNameCanvas || !modalSignatureCanvas) return;
 
-    // 수정 모드에서 서명 패드에 그리기 시작할 때 기존 서명 미리보기 숨기기
-    if (namePad) {
-        namePad.addEventListener('beginStroke', () => {
+        resizeCanvas(modalNameCanvas);
+        resizeCanvas(modalSignatureCanvas);
+
+        modalNamePad = new SignaturePad(modalNameCanvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            minWidth: 1,
+            maxWidth: 2.5
+        });
+        modalSignaturePad = new SignaturePad(modalSignatureCanvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            minWidth: 1,
+            maxWidth: 2.5
+        });
+
+        // 서명 패드에 텍스트 선택 방지 적용
+        preventTextSelection(modalNameCanvas);
+        preventTextSelection(modalSignatureCanvas);
+
+        // 수정 모드에서 서명 패드에 그리기 시작할 때 기존 서명 미리보기 숨기기
+        modalNamePad.addEventListener('beginStroke', () => {
             if (currentEditMode && signaturePreview) {
                 signaturePreview.style.display = 'none';
                 signaturePreview.classList.add('hidden');
                 console.log('서명 패드 사용 시작 - 기존 서명 미리보기 숨김');
             }
         });
-    }
 
-    if (signaturePad) {
-        signaturePad.addEventListener('beginStroke', () => {
+        modalSignaturePad.addEventListener('beginStroke', () => {
             if (currentEditMode && signaturePreview) {
                 signaturePreview.style.display = 'none';
                 signaturePreview.classList.add('hidden');
                 console.log('서명 패드 사용 시작 - 기존 서명 미리보기 숨김');
             }
         });
-    }
+    };
 
-    window.addEventListener('resize', () => {
-        const nameData = namePad.toDataURL();
-        const signatureData = signaturePad.toDataURL();
-        resizeCanvas(namePadCanvas);
-        resizeCanvas(signaturePadCanvas);
-        namePad.fromDataURL(nameData);
-        signaturePad.fromDataURL(signatureData);
+    // 모달 열기
+    const openSignatureModal = () => {
+        signatureModalOverlay.style.display = 'flex';
+
+        // 중앙화된 스크롤 락 시스템으로 강력한 배경 상호작용 차단
+        lockBodyInteraction();
+
+        // 모달이 열린 후 서명 패드 초기화
+        setTimeout(() => {
+            initializeModalSignaturePads();
+
+            // 기존 서명 데이터가 있으면 복원
+            if (currentSignatureData) {
+                const { nameData, signatureData } = currentSignatureData;
+                if (nameData && modalNamePad) {
+                    modalNamePad.fromDataURL(nameData);
+                }
+                if (signatureData && modalSignaturePad) {
+                    modalSignaturePad.fromDataURL(signatureData);
+                }
+            }
+        }, 100);
+    };
+
+    // 모달 닫기
+    const closeSignatureModal = () => {
+        signatureModalOverlay.style.display = 'none';
+
+        // 중앙화된 스크롤 락 시스템으로 배경 상호작용 복원
+        unlockBodyInteraction();
+    };
+
+    // 서명 저장
+    const saveSignature = async () => {
+        if (!modalNamePad || !modalSignaturePad) {
+            alert('서명 패드가 초기화되지 않았습니다.');
+            return;
+        }
+
+        if (modalNamePad.isEmpty() || modalSignaturePad.isEmpty()) {
+            alert('이름과 서명을 모두 입력해주세요.');
+            return;
+        }
+
+        try {
+            // 서명 데이터 저장
+            const nameData = modalNamePad.toDataURL('image/png');
+            const signatureData = modalSignaturePad.toDataURL('image/png');
+
+            currentSignatureData = { nameData, signatureData };
+
+            // combinePads 함수를 사용하여 결합된 이미지 생성
+            const combinedDataUrl = await combinePads(modalNamePad, modalSignaturePad);
+
+            // UI 업데이트
+            signatureResultImg.src = combinedDataUrl;
+            signatureResultImg.style.display = 'block';
+            signaturePlaceholderText.style.display = 'none';
+            signatureTriggerArea.classList.add('completed');
+            signatureDataUrlInput.value = combinedDataUrl;
+
+            closeSignatureModal();
+        } catch (error) {
+            console.error('서명 저장 중 오류:', error);
+            alert('서명 저장 중 오류가 발생했습니다.');
+        }
+    };
+
+    // 모달 이벤트 리스너
+    signatureTriggerArea.addEventListener('click', openSignatureModal);
+    nameModalClearBtn.addEventListener('click', () => {
+        if (modalNamePad) modalNamePad.clear();
     });
+    signatureModalClearBtn.addEventListener('click', () => {
+        if (modalSignaturePad) modalSignaturePad.clear();
+    });
+    signatureModalSaveBtn.addEventListener('click', saveSignature);
+    signatureModalCancelBtn.addEventListener('click', closeSignatureModal);
+
+    // 모달 외부 클릭 시 닫기 - 백그라운드 이벤트 완전 차단
+    signatureModalOverlay.addEventListener('click', (event) => {
+        // 모든 클릭 이벤트를 차단하여 백그라운드 상호작용 방지
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        // 오직 오버레이 자체를 클릭했을 때만 모달 닫기
+        if (event.target === signatureModalOverlay) {
+            closeSignatureModal();
+        }
+
+        // 모든 경우에 이벤트 전파 차단
+        return false;
+    });
+
+    // 글로벌 이벤트 핸들러가 모든 터치 이벤트를 처리하므로 개별 리스너 제거됨
 
     // ===================================================================
     // 헬퍼 함수
@@ -215,17 +349,65 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPreviewElement = null;
 
 
-    // --- 모달 열기/닫기 시 배경 스크롤 및 상호작용 처리 ---
-    const lockBodyScroll = () => {
-        scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    // --- 강력한 모바일 브라우저 모달 스크롤 방지 시스템 ---
+
+    // 글로벌 이벤트 핸들러 및 옵션 정의
+    const preventDefaultScroll = (e) => {
+        // 모달 내부 요소에서 발생한 이벤트는 허용
+        const modalElements = [
+            '#signature-modal-content',
+            '#crop-modal .modal-content',
+            '#edit-request-modal .modal-content',
+            '#loading-modal'
+        ];
+
+        // 이벤트가 모달 내부에서 발생했는지 확인
+        for (let selector of modalElements) {
+            const modalElement = document.querySelector(selector);
+            if (modalElement && modalElement.contains(e.target)) {
+                // 모달 내부에서는 터치 이벤트 허용 (버튼 클릭 등을 위해)
+                return;
+            }
+        }
+
+        // 모달 외부에서만 스크롤 차단
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+    const nonPassive = { passive: false };
+    let savedScrollPosition = 0;
+
+    // 중앙화된 배경 상호작용 차단 함수
+    const lockBodyInteraction = () => {
+        // 현재 스크롤 위치 저장
+        savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+        // body에 modal-open 클래스 추가 (CSS로 overflow: hidden, position: fixed 적용)
         document.body.classList.add('modal-open');
-        document.body.style.top = `-${scrollPosition}px`;
+        document.body.style.top = `-${savedScrollPosition}px`;
+
+        // 스크롤만 차단하고 클릭은 허용 - touchmove와 wheel만 차단
+        window.addEventListener('touchmove', preventDefaultScroll, nonPassive);
+        window.addEventListener('wheel', preventDefaultScroll, nonPassive);
+
+        console.log('배경 스크롤 차단 활성화 (버튼 클릭은 허용), 저장된 스크롤 위치:', savedScrollPosition);
     };
 
-    const unlockBodyScroll = () => {
+    // 중앙화된 배경 상호작용 복원 함수
+    const unlockBodyInteraction = () => {
+        // body에서 modal-open 클래스 제거
         document.body.classList.remove('modal-open');
         document.body.style.top = '';
-        window.scrollTo(0, scrollPosition);
+
+        // 이벤트 리스너 제거하여 정상적인 스크롤 복원
+        window.removeEventListener('touchmove', preventDefaultScroll, nonPassive);
+        window.removeEventListener('wheel', preventDefaultScroll, nonPassive);
+
+        // 저장된 스크롤 위치로 복원
+        window.scrollTo(0, savedScrollPosition);
+
+        console.log('배경 상호작용 복원 완료, 복원된 스크롤 위치:', savedScrollPosition);
     };
 
     const showCropModal = (file, inputElement, previewElement) => {
@@ -279,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cropModal.classList.remove('hidden');
 
             // 배경 스크롤 및 상호작용 차단
-            lockBodyScroll();
+            lockBodyInteraction();
 
             // 기존 Cropper 인스턴스 제거
             if (currentCropper) {
@@ -461,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 배경 스크롤 및 상호작용 차단 해제
-        unlockBodyScroll();
+        unlockBodyInteraction();
 
         if (currentCropper) {
             currentCropper.destroy();
@@ -739,19 +921,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 수정 모달 ---
     openEditModalBtn.addEventListener('click', () => {
         editRequestModal.classList.remove('hidden');
-        lockBodyScroll();
+        lockBodyInteraction();
     });
 
     closeEditModalBtn.addEventListener('click', () => {
         editRequestModal.classList.add('hidden');
-        unlockBodyScroll();
+        unlockBodyInteraction();
     });
 
     // 오버레이 클릭 시 모달 닫기
     editRequestModal.addEventListener('click', (e) => {
         if (e.target === editRequestModal) {
             editRequestModal.classList.add('hidden');
-            unlockBodyScroll();
+            unlockBodyInteraction();
         }
     });
     requestEditLinkBtn.addEventListener('click', async () => {
@@ -812,30 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 서명패드 및 이미지 미리보기 ---
-    clearNameBtn.addEventListener('click', () => {
-        namePad.clear();
-        console.log('이름 패드 지우기');
-
-        // 수정 모드에서 두 패드가 모두 비어있을 때 기존 서명 이미지 다시 표시
-        if (currentEditMode && signaturePreview && signaturePreview.src && signaturePad.isEmpty()) {
-            signaturePreview.classList.remove('hidden');
-            signaturePreview.style.display = 'block';
-            console.log('이름 패드 지움 - 기존 서명 미리보기 표시');
-        }
-    });
-
-    clearSignatureBtn.addEventListener('click', () => {
-        signaturePad.clear();
-        console.log('서명 패드 지우기');
-
-        // 수정 모드에서 두 패드가 모두 비어있을 때 기존 서명 이미지 다시 표시
-        if (currentEditMode && signaturePreview && signaturePreview.src && namePad.isEmpty()) {
-            signaturePreview.classList.remove('hidden');
-            signaturePreview.style.display = 'block';
-            console.log('서명 패드 지움 - 기존 서명 미리보기 표시');
-        }
-    });
+    // --- 이미지 미리보기 ---
     setupImagePreview(contractImageInput, contractPreview);
     setupImagePreview(nameChangeImageInput, nameChangePreview);
 
@@ -852,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!document.getElementById(id).value) return alert(`필수 항목을 입력해주세요: ${name}`);
             }
             if (!contractImageInput.files[0]) return alert("필수 항목을 첨부해주세요: 계약서 사진");
-            if (namePad.isEmpty() || signaturePad.isEmpty()) return alert("필수 항목을 입력해주세요: 이름(정자체)과 서명");
+            if (!signatureDataUrlInput.value) return alert("필수 항목을 입력해주세요: 이름(정자체)과 서명");
         } else {
             // 수정 모드에서는 기본 텍스트 필드만 체크 (이미지와 서명은 선택사항)
             const requiredFields = { fullName: "성명", dongHo: "동호수", dob: "생년월일", phone: "연락처" };
@@ -866,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         loadingModal.classList.remove('hidden');
-        lockBodyScroll();
+        lockBodyInteraction();
         submitBtn.disabled = true;
 
         try {
@@ -893,8 +1052,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('생성된 FormData:', formData);
             console.log('이메일 값 확인:', formData.email);
             let combinedSignatureObject = null;
-            if (!namePad.isEmpty() && !signaturePad.isEmpty()) {
-                const dataUrl = await combinePads(namePad, signaturePad);
+            // 모달 서명 데이터 확인
+            if (signatureDataUrlInput.value) {
+                const dataUrl = signatureDataUrlInput.value;
                 combinedSignatureObject = { base64: dataUrl.split(',')[1], type: 'image/png', name: 'combined_signature.png' };
             }
             
@@ -938,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = false;
         } finally {
             loadingModal.classList.add('hidden');
-            unlockBodyScroll();
+            unlockBodyInteraction();
         }
     });
 
@@ -962,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("수정 토큰 발견:", editToken);
             currentEditMode = true;
             loadingModal.classList.remove('hidden');
-            lockBodyScroll();
+            lockBodyInteraction();
             try {
                 console.log("GAS 백엔드에 수정 데이터 요청 중...");
                 const requestBody = { apiKey: API_KEY, action: 'getEditData', token: editToken };
@@ -992,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = window.location.pathname; // 실패 시 URL 초기화
             } finally {
                 loadingModal.classList.add('hidden');
-                unlockBodyScroll();
+                unlockBodyInteraction();
             }
         } else {
             console.log("수정 토큰 없음. 일반 제출 모드로 시작합니다.");
