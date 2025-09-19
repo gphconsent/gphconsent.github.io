@@ -1253,8 +1253,8 @@ body::after {
 
 .crop-container {
     width: 100%;
-    min-height: 300px;
-    max-height: 65vh;
+    min-height: 350px;
+    max-height: 75vh; /* 캔버스 크기 확대 */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1262,9 +1262,11 @@ body::after {
     overflow: hidden;
     background: #f8f9fa;
     border-radius: 8px;
-    transition: all 0.4s ease-in-out;
+    transition: all 0.3s ease-out; /* 더 빠른 트랜지션 */
     position: relative;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transform: translateZ(0); /* GPU 가속 활성화 */
+    will-change: transform, width, height; /* 성능 최적화 */
 }
 
 .crop-container img {
@@ -1277,16 +1279,19 @@ body::after {
 /* Cropper.js 스타일링 개선 */
 .crop-container .cropper-container {
     background: transparent !important;
-    transition: all 0.3s ease-in-out;
+    transition: all 0.2s ease-out; /* 더 빠른 반응 */
+    transform: translateZ(0); /* GPU 가속 */
 }
 
 .crop-container .cropper-canvas {
     background: transparent !important;
-    transition: transform 0.3s ease-in-out;
+    transition: transform 0.2s ease-out; /* 더 빠른 반응 */
+    transform: translateZ(0); /* GPU 가속 */
 }
 
 .crop-container .cropper-canvas img {
-    transition: transform 0.3s ease-in-out;
+    transition: transform 0.2s ease-out; /* 더 빠른 반응 */
+    transform: translateZ(0); /* GPU 가속 */
 }
 
 .crop-container .cropper-modal {
@@ -1296,13 +1301,50 @@ body::after {
 
 /* 크롭 박스 스타일 개선 */
 .crop-container .cropper-crop-box {
-    transition: all 0.2s ease-in-out;
+    transition: all 0.15s ease-out; /* 더 빠른 반응 */
+    transform: translateZ(0); /* GPU 가속 */
 }
 
 .crop-container .cropper-view-box {
     outline: 2px solid #132D25;
     outline-color: rgba(19, 45, 37, 0.8);
-    transition: outline-color 0.2s ease-in-out;
+    transition: outline-color 0.15s ease-out; /* 더 빠른 반응 */
+    transform: translateZ(0); /* GPU 가속 */
+}
+
+/* 크롭 핸들 커스터마이징 */
+.crop-container .cropper-point {
+    width: 8px;
+    height: 8px;
+    background-color: #132D25;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    opacity: 0.8;
+}
+
+/* 모서리 핸들만 크게 */
+.crop-container .cropper-point-se,
+.crop-container .cropper-point-sw,
+.crop-container .cropper-point-ne,
+.crop-container .cropper-point-nw {
+    width: 12px;
+    height: 12px;
+    background-color: #6a140c;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    opacity: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 변의 중앙 핸들은 작게 유지 */
+.crop-container .cropper-point-n,
+.crop-container .cropper-point-s,
+.crop-container .cropper-point-e,
+.crop-container .cropper-point-w {
+    width: 6px;
+    height: 6px;
+    background-color: #132D25;
+    border: 2px solid #fff;
 }
 
 /* 회전 중 로딩 인디케이터 */
@@ -1355,41 +1397,54 @@ body::after {
 /* 모바일 최적화 */
 @media (max-width: 768px) {
     .crop-modal-content {
-        width: 98%;
-        max-height: 98vh;
+        width: 95%;
+        max-height: 88vh; /* 헤더 완전 가시성 보장 */
         border-radius: 12px;
+        display: flex;
+        flex-direction: column;
     }
 
     .crop-modal-content .card-header {
-        padding: 15px 18px;
+        padding: 18px 20px; /* 헤더 패딩 증가로 가독성 향상 */
+        flex-shrink: 0; /* 헤더가 압축되지 않도록 보장 */
+        min-height: 80px; /* 최소 헤더 높이 보장 */
     }
 
     .crop-modal-content .card-header h3 {
-        font-size: 1rem;
+        font-size: 1.1rem; /* 폰트 크기 약간 증가 */
+        margin-bottom: 6px;
     }
 
     .crop-modal-content .card-content {
         padding: 15px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* flex 레이아웃에서 올바른 크기 계산 */
     }
 
     .crop-container {
-        min-height: 250px;
-        max-height: 50vh;
-        transition: all 0.4s ease-in-out;
+        min-height: 250px; /* 최소 높이 더 증가 */
+        max-height: 60vh; /* 캔버스 크기 대폭 확대 */
+        transition: all 0.3s ease-out; /* 더 빠른 트랜지션 */
         box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        flex: 1;
+        transform: translateZ(0); /* GPU 가속 */
     }
 
     .crop-controls {
-        gap: 15px;
+        gap: 12px;
         flex-wrap: wrap;
         justify-content: space-around;
+        flex-shrink: 0; /* 버튼 영역이 압축되지 않도록 보장 */
+        margin-top: 15px;
     }
 
     .crop-controls .btn {
-        min-width: 120px;
-        min-height: 50px; /* 터치 최적화 크기 */
-        font-size: 1rem;
-        padding: 12px 20px;
+        min-width: 110px;
+        min-height: 48px; /* 터치 최적화 크기 */
+        font-size: 0.95rem;
+        padding: 12px 16px;
         border-radius: 10px;
         touch-action: manipulation; /* 터치 최적화 */
     }
@@ -1403,28 +1458,69 @@ body::after {
 @media (max-width: 480px) {
     .crop-modal-content {
         width: 100%;
-        height: 100vh;
-        border-radius: 0;
-        max-height: 100vh;
+        height: 88vh; /* 헤더 완전 가시성을 위해 더 줄임 */
+        border-radius: 12px; /* 둥근 모서리 복원 */
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .crop-modal-content .card-header {
+        padding: 20px 18px; /* 헤더 패딩 증가 */
+        flex-shrink: 0;
+        min-height: 85px; /* 작은 화면에서도 충분한 헤더 공간 */
+    }
+
+    .crop-modal-content .card-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 12px;
     }
 
     .crop-container {
-        min-height: 200px;
-        max-height: 45vh;
-        transition: all 0.4s ease-in-out;
+        min-height: 220px; /* 최소 높이 증가 */
+        max-height: 55vh; /* 캔버스 크기 확대 */
+        transition: all 0.3s ease-out; /* 더 빠른 트랜지션 */
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        flex: 1;
+        transform: translateZ(0); /* GPU 가속 */
     }
 
     .crop-controls {
         padding: 0 10px;
-        gap: 12px;
+        gap: 10px;
+        flex-shrink: 0;
+        margin-top: 12px;
     }
 
     .crop-controls .btn {
-        min-width: 100px;
-        min-height: 52px; /* 더 큰 터치 영역 */
-        font-size: 0.95rem;
-        padding: 14px 16px;
+        min-width: 95px;
+        min-height: 50px; /* 터치 영역 최적화 */
+        font-size: 0.9rem;
+        padding: 12px 14px;
+        position: relative; /* 스피너 위치 기준점 */
+    }
+
+    .crop-controls .btn.loading {
+        pointer-events: none; /* 로딩 중 클릭 방지 */
+        opacity: 0.7;
+    }
+
+    .crop-controls .btn.loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin-top: -10px;
+        margin-left: -10px;
+        border: 2px solid transparent;
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
     }
 }
 
@@ -1525,23 +1621,41 @@ body::after {
 }
 
 .modal-header {
-    padding: 25px 25px 15px 25px;
+    background: linear-gradient(135deg, #132D25, #0f251f);
+    color: white;
+    padding: 25px 25px 20px 25px;
     text-align: center;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: none;
+    position: relative;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #6a140c, #132D25);
 }
 
 .modal-title {
     font-size: 1.4rem;
     font-weight: 700;
     margin: 0 0 8px 0;
-    color: #132D25;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
 
 .modal-subtitle {
     font-size: 0.95rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.9);
     margin: 0;
     line-height: 1.4;
+    opacity: 0.9;
 }
 
 .signature-sections {
@@ -1628,6 +1742,19 @@ body::after {
     min-height: 36px;
 }
 
+.signature-section .btn-secondary {
+    background-color: #6a140c;
+    border-color: #6a140c;
+    color: white;
+}
+
+.signature-section .btn-secondary:hover {
+    background-color: #82180F;
+    border-color: #82180F;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(106, 20, 12, 0.3);
+}
+
 .modal-buttons {
     padding: 20px 25px 25px 25px;
     display: flex;
@@ -1647,25 +1774,30 @@ body::after {
 }
 
 .modal-buttons .btn-primary {
-    background: linear-gradient(135deg, #132D25, #1a3b2d);
+    background: linear-gradient(135deg, #132D25, #0f251f);
     border-color: #132D25;
+    color: white;
 }
 
 .modal-buttons .btn-primary:hover {
-    background: linear-gradient(135deg, #1a3b2d, #132D25);
+    background: linear-gradient(135deg, #0f251f, #0b1a15);
+    border-color: #0f251f;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(19, 45, 37, 0.3);
 }
 
 .modal-buttons .btn-outline-secondary {
-    border-color: #6c757d;
-    color: #6c757d;
+    border-color: #6a140c;
+    color: #6a140c;
+    background: transparent;
 }
 
 .modal-buttons .btn-outline-secondary:hover {
-    background-color: #6c757d;
-    border-color: #6c757d;
+    background-color: #6a140c;
+    border-color: #6a140c;
+    color: white;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(106, 20, 12, 0.3);
 }
 
 /* 모바일 최적화 */
@@ -1675,40 +1807,55 @@ body::after {
     }
 
     #signature-modal-content {
-        max-height: 90vh; /* 높이를 줄여서 버튼이 화면에 보이도록 */
+        max-height: 100vh; /* 버튼 영역을 위해 높이 늘림 */
         border-radius: 15px;
         overflow-y: auto; /* 내용이 많으면 스크롤 가능 */
+        display: flex;
+        flex-direction: column;
     }
 
     .modal-header {
-        padding: 20px 20px 12px 20px;
+        padding: 18px 20px 15px 20px; /* 헤더 패딩 더 줄임 */
+        background: linear-gradient(135deg, #132D25, #0f251f);
+        color: white;
+    }
+
+    .modal-header::before {
+        height: 3px; /* 모바일에서 약간 더 얇은 accent line */
     }
 
     .modal-title {
         font-size: 1.2rem;
+        color: white;
     }
 
     .modal-subtitle {
         font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
     }
 
     .signature-sections {
-        padding: 15px 20px;
+        padding: 10px 20px; /* 패딩 더 줄임 */
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .signature-section {
-        margin-bottom: 25px;
+        margin-bottom: 15px; /* 간격 더 줄임 */
     }
 
     #modal-name-pad,
     #modal-signature-pad {
-        height: 150px;
+        height: 125px; /* 높이 더 줄임 */
     }
 
     .modal-buttons {
-        padding: 15px 20px 20px 20px;
+        padding: 10px 20px 15px 20px; /* 패딩 최소화 */
         flex-direction: row; /* 모바일에서도 가로 배치 유지 */
         gap: 12px; /* 버튼 간격 조정 */
+        flex-shrink: 0; /* 버튼 영역이 압축되지 않도록 보장 */
     }
 
     .modal-buttons .btn {

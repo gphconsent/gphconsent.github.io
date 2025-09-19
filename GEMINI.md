@@ -1,42 +1,117 @@
-# Project Overview
+# CLAUDE.md
 
-This project is a web-based consent form for the "Gocheok Prugio Hillstate Apartment Intended Occupants Council." It's a single-page application designed to collect consent from apartment residents on various matters, including the delegation of authority to the council and the collection of personal information.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Key Technologies
+## Project Overview
 
-*   **Frontend:** HTML, CSS, JavaScript
-*   **Libraries:** SignaturePad.js (for capturing user signatures)
-*   **Backend (Planned):** Google Apps Script (GAS)
+This is a static web application for collecting consent forms from apartment residents ("고척푸르지오힐스테이트 입주예정자협의회 위임 동의서"). It's a single-page application built with vanilla HTML, CSS, and JavaScript that handles digital signatures, image uploads, and form validation.
 
-## Architecture
+## Development Commands
 
-The application consists of a single HTML file (`index.html`) that structures the form, a CSS file (`css/style.css`) for styling, and a JavaScript file (`js/script.js`) for client-side logic. The JavaScript handles form validation, signature capture, and image preview. The form data is intended to be submitted to a Google Apps Script backend, which is not yet implemented.
+**Running the Application:**
+```bash
+# No build process required - open directly in browser
+open index.html        # macOS
+start index.html       # Windows
+```
 
-# Building and Running
+**Local Development:**
+- Use any static file server or open `index.html` directly in browser
+- No package manager, build tools, or dependencies to install
+- Changes to HTML/CSS/JS are immediately visible on refresh
 
-This is a static website, so there is no build process. To run the project, simply open the `index.html` file in a web browser.
+## Architecture & Key Components
 
-**TODO:**
-*   Implement the Google Apps Script backend to handle form submissions.
-*   The email verification button (`email-verify-btn`) does not have any functionality yet.
+### File Structure
+```
+/
+├── index.html          # Single-page application with multi-step form
+├── css/style.css       # All styling and responsive design
+├── js/script.js        # Client-side logic, validation, and Google Apps Script integration
+└── img/               # Static assets and example images
+```
 
-# Development Conventions
+### Core Technologies
+- **Frontend:** Vanilla HTML5, CSS3, JavaScript (ES6)
+- **Signature Capture:** SignaturePad.js library (loaded via CDN)
+- **Backend Integration:** Google Apps Script (GAS) - configured in `js/script.js:6-9`
 
-*   **Coding Style:** The code is well-formatted and follows standard HTML, CSS, and JavaScript conventions.
-*   **File Structure:** The project is organized into `css`, `js`, and `img` directories for styles, scripts, and images, respectively.
-*   **Validation:** The `js/script.js` file includes a `validateForm` function that checks for required fields before submission.
-*   **Signatures:** The `SignaturePad.js` library is used to capture and handle user signatures. The name and signature are combined into a single image before submission.
+### Key Features & Implementation
+- **Multi-step Form:** Single HTML file with multiple sections for user info, document upload, consent agreements, and digital signatures
+- **Digital Signatures:** Two canvas elements (`name-pad`, `signature-pad`) using SignaturePad.js, combined into single image before submission
+- **Image Upload & Preview:** File upload with immediate preview functionality for contract documents
+- **Responsive Design:** Mobile-first CSS with support for desktop, tablet, and mobile
+- **Client-side Validation:** Comprehensive form validation in `validateForm()` function
 
-단순히 기능 구현을 넘어, 더 안정적이고 유지보수하기 좋은 애플리케이션을 만들기 위해 아래 가이드라인을 준수하여 개발을 진행해 줘.
+### Backend Configuration
+The application is configured to submit to Google Apps Script:
+- **GAS URL:** Set in `js/script.js:6` (`GAS_WEB_APP_URL`)
+- **API Key:** Configured in `js/script.js:9` (`API_KEY`)
+- **Authentication:** Uses API key validation for security without user login
 
-1. **보안 및 안정성 강화**
-    - **애플리케이션 인증:** `Anyone` 접근 허용 시 발생할 수 있는 무분별한 요청을 막기 위해, **사용자 로그인 없이** 앱을 보호하는 `API Key` 방식을 도입한다. 프론트엔드와 백엔드(GAS) 간에만 아는 비밀 키를 정해, 요청 시마다 유효성을 검증하는 로직을 필수로 포함한다.
-    - **서버 측 데이터 검증:** 프론트엔드에서 받은 데이터는 백엔드에서 한 번 더 필수 값 누락, 형식 등을 확인하여 데이터 무결성을 보장한다.
-2. **성능 및 사용자 경험 (UX)**
-    - **Google Apps Script 실행 시간 제한 인지:** GAS는 최대 6분간 실행된다. 이미지 업로드 및 PDF 생성은 이 시간을 초과할 수 있는 작업이므로, 코드 실행 시간을 최적화해야 한다.
-    - **명확한 피드백 제공:** 제출 버튼 클릭 후 서버에서 모든 처리가 완료될 때까지 시간이 걸릴 수 있다. 이 시간 동안 사용자가 앱이 멈췄다고 오해하지 않도록 **"처리 중입니다..."와 같은 명확한 로딩 상태(Loading Indicator)를 반드시 표시**한다.
-3. **코드 품질 및 유지보수**
-    - **하드코딩 지양 (설정 중앙화):** 스프레드시트 ID, 폴더 ID 등 주요 설정 값들을 코드 곳곳에 흩어놓지 말고, 코드 상단에 `CONFIG`와 같은 설정 객체로 모아서 관리한다.
-    - **함수 모듈화:** `doPost` 함수 하나가 모든 일을 처리하게 하지 않는다. `데이터를 시트에 저장하는 함수`, `파일을 드라이브에 업로드하는 함수`, `PDF를 생성하는 함수` 등으로 기능을 명확히 분리하여 가독성과 재사용성을 높인다.
-    - **상세한 로그 기록:** `Logger.log()`를 활용하여 데이터 처리 과정의 주요 단계와 변수 값을 기록한다. 이는 추후 문제 발생 시 원인을 빠르고 정확하게 파악하는 데 결정적인 역할을 한다.
-    - **Context7 MCP이용:** 항상 코드를 구현 할 때는 Context7 MCP서버를 이용하여 환각을 피하고 최신 버전의 사례를 참조하여 구현한다.
+### Form Data Structure
+The form collects:
+1. **Basic Info:** Email, name, apartment unit, DOB, phone number
+2. **Contract Image:** Upload and preview of apartment supply contract
+3. **Consent Agreements:** Multiple checkbox agreements for various authorizations
+4. **Digital Signatures:** Name signature and main signature combined into single image
+5. **Optional:** Name change documentation for title transfers
+
+### Key Functions in `js/script.js`
+- `validateForm()`: Comprehensive client-side validation
+- `combinePads()`: Merges two signature canvases into single image
+- `fileToBase64()`: Converts uploaded files to Base64 for GAS submission
+- Form submission handler: Prepares all data for GAS backend
+
+## Development Guidelines
+
+### Code Style & Conventions
+- **Korean Language:** All user-facing text and comments in Korean
+- **Semantic HTML:** Well-structured form elements with proper labels and accessibility
+- **CSS:** BEM-like naming, mobile-first responsive design
+- **JavaScript:** ES6 features, Promise-based async operations, comprehensive error handling
+
+### Brand Colors & Design Guidelines
+When implementing design improvements, use the following brand color palette:
+- **Primary Brand Color:** `#132D25` (Dark green - main branding color)
+- **Secondary Brand Color:** `#6a140c` (Dark red - accent and highlight color)
+- **Background Color:** `#FFFFFF` (White - clean background for content areas)
+
+**Color Usage Guidelines:**
+- Use `#132D25` for primary buttons, headers, and main brand elements
+- Use `#6a140c` for highlights, error states, or secondary call-to-action elements
+- Maintain sufficient contrast ratios for accessibility compliance
+- Apply colors consistently across all UI components and interactions
+
+### Security Considerations
+- API key validation prevents unauthorized form submissions
+- Client-side validation with server-side validation expected in GAS backend
+- Personal information handling follows Korean privacy requirements
+
+### Current Limitations & TODOs
+1. **Email Verification:** Email verification button (`email-verify-btn`) has no functionality
+2. **GAS Backend:** Google Apps Script backend needs implementation
+3. **Error Handling:** More robust error handling for network failures
+4. **Loading States:** Loading indicators during form submission
+
+### Testing
+- No automated testing framework
+- Test manually across different screen sizes and browsers
+- Verify signature pad functionality on touch devices
+- Test file upload and preview features
+
+## Important Implementation Notes
+
+- **SignaturePad Library:** Loaded from CDN, handles touch and mouse input
+- **Canvas Handling:** Signature pads auto-resize and maintain drawing data during window resize
+- **Image Processing:** Files converted to Base64 for transmission to GAS backend
+- **Form State:** Single-page form with progressive disclosure of sections
+- **Validation:** Both individual field validation and comprehensive form validation before submission
+
+When modifying this codebase:
+1. Maintain Korean language for all user-facing elements
+2. Test signature functionality on both desktop and mobile
+3. Ensure responsive design remains intact
+4. Validate form data structure matches expected GAS backend format
+5. Use Context7 MCP for Google Apps Script implementation guidance
+6. 모든 브라우저에서 호환이 가능한 방식으로 설계하고 코드를 구현하라.
