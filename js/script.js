@@ -438,14 +438,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== Helpers
     const clampRotation = (deg) => ((deg % 360) + 360) % 360; // -> 0..359
 
+    // 스크롤 위치 저장 변수
+    let savedScrollPosition = 0;
+
     function openModal() {
+        // 현재 스크롤 위치 저장
+        savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
         cropModal.classList.remove('hidden');
         document.body.classList.add('modal-open');
+
+        // 모달 열기 시 저장된 위치로 고정
+        document.body.style.top = `-${savedScrollPosition}px`;
     }
 
     function closeModal() {
         cropModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
+
+        // 저장된 스크롤 위치로 복원
+        document.body.style.top = '';
+        window.scrollTo(0, savedScrollPosition);
 
         if (cropper) {
         cropper.destroy();
@@ -496,129 +509,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 🆕 초기 업로드 시 이미지를 캔버스에 꽉 채우는 함수
+    // --- 🆕 단순화된 초기 이미지 설정
     function initializeImageSize() {
         if (!cropper) return;
 
-        const container = cropper.getContainerData();
-        const img = cropper.getImageData();
+        // 이미지의 실제 캔버스 데이터를 가져와서 이미지 경계에 맞춘 크롭박스 설정
+        const canvasData = cropper.getCanvasData();
 
-        // 초기 업로드 시 85% 스케일로 이미지를 크게 표시
-        const scale = 0.85;
-        const targetW = img.naturalWidth * scale;
-        const targetH = img.naturalHeight * scale;
-
-        // 완벽한 중앙 정렬
-        const left = container.left + (container.width - targetW) / 2;
-        const top = container.top + (container.height - targetH) / 2;
-
-        cropper.setCanvasData({
-            left: Math.round(left),
-            top: Math.round(top),
-            width: Math.round(targetW),
-            height: Math.round(targetH)
+        // 크롭박스를 이미지의 실제 경계에 맞춤 (이미지를 꽉 채우도록)
+        cropper.setCropBoxData({
+            left: canvasData.left,
+            top: canvasData.top,
+            width: canvasData.width,
+            height: canvasData.height
         });
 
-        console.log(`🎯 초기 이미지 크기 최적화: ${Math.round(targetW)}x${Math.round(targetH)} (스케일: ${scale})`);
+        console.log(`🎯 초기 크롭: 이미지 경계에 맞춘 크롭박스 설정`);
     }
 
-    // --- 완전히 개선된 동적 캔버스 리사이징과 중앙 정렬 함수 (회전용)
+    // --- 🆕 단순화된 회전 및 중앙 정렬 함수
     function fitImageToContainerAndSnapCropbox() {
         if (!cropper) return;
 
-        // 1) Reset transform then re-apply the absolute rotation so Cropper recalculates layout.
         const angle = currentRotation;
-        cropper.reset();
+
+        // 1) 회전 적용
         cropper.rotateTo(angle);
 
-        // 2) Get image data
-        const img = cropper.getImageData(); // naturalWidth, naturalHeight
+        // 2) 컨테이너와 캔버스 데이터 정확히 가져오기
+        const containerData = cropper.getContainerData();
+        const canvasData = cropper.getCanvasData();
 
-        // 3) Calculate rotated bounding box dimensions (실제 렌더링된 크기 사용)
-        const rad = (angle * Math.PI) / 180;
-        const cos = Math.abs(Math.cos(rad));
-        const sin = Math.abs(Math.sin(rad));
-        const boundW = img.width * cos + img.height * sin;
-        const boundH = img.width * sin + img.height * cos;
+        // 3) 캔버스에 이미지가 적절히 맞도록 스케일 계산
+        const scaleW = containerData.width / canvasData.naturalWidth;
+        const scaleH = containerData.height / canvasData.naturalHeight;
+        const scale = Math.min(scaleW, scaleH) * 0.8; // 80% 크기로 여유있게
 
-        // 4) 🔥 NEW: Dynamic container sizing based on rotated image dimensions
-        const cropContainer = document.querySelector('.crop-container');
-        if (cropContainer) {
-            // 회전된 이미지의 종횡비
-            const rotatedAspectRatio = boundW / boundH;
+        const newWidth = canvasData.naturalWidth * scale;
+        const newHeight = canvasData.naturalHeight * scale;
 
-            // 캔버스를 회전된 이미지에 맞춰 동적으로 조정
-            let newContainerWidth, newContainerHeight;
+        // 4) 컨테이너 기준 정확한 중앙 계산
+        const left = (containerData.width - newWidth) / 2;
+        const top = (containerData.height - newHeight) / 2;
 
-            // 기본 최대 크기 설정
-            const maxWidth = Math.min(window.innerWidth * 0.85, 800);
-            const maxHeight = Math.min(window.innerHeight * 0.7, 600);
+        // 5) 캔버스 데이터 즉시 적용
+        cropper.setCanvasData({
+            left: Math.round(left),
+            top: Math.round(top),
+            width: Math.round(newWidth),
+            height: Math.round(newHeight)
+        });
 
-            // 회전된 이미지 비율에 맞춰 컨테이너 크기 계산
-            if (rotatedAspectRatio > 1.5) {
-                // 가로가 긴 이미지: 가로 기준으로 크기 설정
-                newContainerWidth = maxWidth;
-                newContainerHeight = Math.min(maxWidth / rotatedAspectRatio, maxHeight);
-            } else if (rotatedAspectRatio < 0.7) {
-                // 세로가 긴 이미지: 세로 기준으로 크기 설정
-                newContainerHeight = maxHeight;
-                newContainerWidth = Math.min(maxHeight * rotatedAspectRatio, maxWidth);
-            } else {
-                // 정사각형에 가까운 이미지: 균형있게 설정
-                const minDimension = Math.min(maxWidth, maxHeight);
-                newContainerWidth = minDimension;
-                newContainerHeight = minDimension;
-            }
+        // 6) 크롭박스를 캔버스 중앙에 70% 크기로 설정
+        const cropBoxSize = Math.min(newWidth, newHeight) * 0.7;
+        const cropLeft = left + (newWidth - cropBoxSize) / 2;
+        const cropTop = top + (newHeight - cropBoxSize) / 2;
 
-            // 최소 크기 보장
-            newContainerWidth = Math.max(newContainerWidth, 300);
-            newContainerHeight = Math.max(newContainerHeight, 200);
+        cropper.setCropBoxData({
+            left: Math.round(cropLeft),
+            top: Math.round(cropTop),
+            width: Math.round(cropBoxSize),
+            height: Math.round(cropBoxSize)
+        });
 
-            // 캔버스 크기 업데이트 (부드러운 전환)
-            cropContainer.style.width = `${newContainerWidth}px`;
-            cropContainer.style.maxHeight = `${newContainerHeight}px`;
-            cropContainer.style.height = `${newContainerHeight}px`;
-
-            console.log(`📐 캔버스 리사이징: ${Math.round(newContainerWidth)}x${Math.round(newContainerHeight)} (비율: ${rotatedAspectRatio.toFixed(2)})`);
-        }
-
-        // 5) 새로운 컨테이너 크기로 다시 컨테이너 데이터 가져오기
-        setTimeout(() => {
-            const newContainer = cropper.getContainerData();
-
-            // 6) 최적 스케일링 계산 (개선된 알고리즘)
-            const scaleW = newContainer.width / boundW;
-            const scaleH = newContainer.height / boundH;
-            const scale = Math.min(scaleW, scaleH) * 0.85; // 85%로 이미지를 훨씬 크게 표시
-
-            const targetW = boundW * scale;
-            const targetH = boundH * scale;
-
-            // 7) 🎯 완벽한 중앙 정렬 계산
-            const left = newContainer.left + (newContainer.width - targetW) / 2;
-            const top = newContainer.top + (newContainer.height - targetH) / 2;
-
-            // 8) 캔버스 데이터 적용 (중앙 정렬과 함께)
-            cropper.setCanvasData({
-                left: Math.round(left),
-                top: Math.round(top),
-                width: Math.round(targetW),
-                height: Math.round(targetH)
-            });
-
-            // 9) 크롭박스를 이미지에 정확히 맞춤
-            setTimeout(() => {
-                const canvas = cropper.getCanvasData();
-                cropper.setCropBoxData({
-                    left: canvas.left,
-                    top: canvas.top,
-                    width: canvas.width,
-                    height: canvas.height
-                });
-
-                console.log(`✅ 회전 완료: ${angle}°, 스케일: ${scale.toFixed(3)}, 중앙정렬: ${Math.round(left)},${Math.round(top)}`);
-            }, 50);
-        }, 100); // 캔버스 크기 변경 후 잠시 대기
+        console.log(`✅ 회전 완료: ${angle}°, 정확한 중앙 정렬 완료`);
     }
 
     // ===== Event wiring
@@ -647,27 +601,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // 회전 시작: 초기 로드 상태 해제
         isInitialLoad = false;
 
-        // Add visual feedback during rotation
-        const cropContainer = document.querySelector('.crop-container');
-        cropContainer?.classList.add('rotating');
-        rotateLeftBtn.disabled = true;
+        // 로딩 상태 표시
+        rotateLeftBtn.classList.add('loading');
         rotateRightBtn.disabled = true;
 
         currentRotation = clampRotation(currentRotation - 90);
-        console.log(`🔄 좌회전 시작: ${currentRotation}°`);
+        console.log(`🔄 좌회전: ${currentRotation}°`);
 
-        // Execute rotation with enhanced visual feedback
+        // 회전 실행 후 로딩 상태 제거
         setTimeout(() => {
             fitImageToContainerAndSnapCropbox();
 
-            // Remove loading state after rotation completes (longer delay for canvas resizing)
-            setTimeout(() => {
-                cropContainer?.classList.remove('rotating');
-                rotateLeftBtn.disabled = false;
-                rotateRightBtn.disabled = false;
-                console.log(`✅ 좌회전 완료: ${currentRotation}°`);
-            }, 500); // 더 긴 딜레이로 애니메이션 완료 대기
-        }, 50);
+            // 로딩 상태 제거
+            rotateLeftBtn.classList.remove('loading');
+            rotateRightBtn.disabled = false;
+        }, 10); // 최소한의 딜레이로 로딩 표시
     });
 
     rotateRightBtn && rotateRightBtn.addEventListener('click', () => {
@@ -676,27 +624,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // 회전 시작: 초기 로드 상태 해제
         isInitialLoad = false;
 
-        // Add visual feedback during rotation
-        const cropContainer = document.querySelector('.crop-container');
-        cropContainer?.classList.add('rotating');
+        // 로딩 상태 표시
+        rotateRightBtn.classList.add('loading');
         rotateLeftBtn.disabled = true;
-        rotateRightBtn.disabled = true;
 
         currentRotation = clampRotation(currentRotation + 90);
-        console.log(`🔄 우회전 시작: ${currentRotation}°`);
+        console.log(`🔄 우회전: ${currentRotation}°`);
 
-        // Execute rotation with enhanced visual feedback
+        // 회전 실행 후 로딩 상태 제거
         setTimeout(() => {
             fitImageToContainerAndSnapCropbox();
 
-            // Remove loading state after rotation completes (longer delay for canvas resizing)
-            setTimeout(() => {
-                cropContainer?.classList.remove('rotating');
-                rotateLeftBtn.disabled = false;
-                rotateRightBtn.disabled = false;
-                console.log(`✅ 우회전 완료: ${currentRotation}°`);
-            }, 500); // 더 긴 딜레이로 애니메이션 완료 대기
-        }, 50);
+            // 로딩 상태 제거
+            rotateRightBtn.classList.remove('loading');
+            rotateLeftBtn.disabled = false;
+        }, 10); // 최소한의 딜레이로 로딩 표시
     });
 
     cropOkBtn && cropOkBtn.addEventListener('click', () => {
