@@ -1012,22 +1012,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 폼 제출 처리 ---
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!isEmailVerified) return alert('이메일 인증을 먼저 완료해주세요.');
+
+        // 즉시 버튼 비활성화로 중복 제출 방지
+        if (submitBtn.disabled) {
+            console.log('이미 제출 중입니다. 중복 제출 방지.');
+            return;
+        }
+        submitBtn.disabled = true;
+
+        if (!isEmailVerified) {
+            submitBtn.disabled = false; // 에러 시 버튼 재활성화
+            return alert('이메일 인증을 먼저 완료해주세요.');
+        }
 
         // 필수 필드 유효성 검사
         if (!currentEditMode) {
             // 신규 제출 시 모든 필수 항목 체크
             const requiredFields = { fullName: "성명", dongHo: "동호수", dob: "생년월일", phone: "연락처", editPassword: "수정용 비밀번호" };
             for (const [id, name] of Object.entries(requiredFields)) {
-                if (!document.getElementById(id).value) return alert(`필수 항목을 입력해주세요: ${name}`);
+                if (!document.getElementById(id).value) {
+                    submitBtn.disabled = false; // 에러 시 버튼 재활성화
+                    return alert(`필수 항목을 입력해주세요: ${name}`);
+                }
             }
-            if (!contractImageInput.files[0]) return alert("필수 항목을 첨부해주세요: 계약서 사진");
-            if (!signatureDataUrlInput.value) return alert("필수 항목을 입력해주세요: 이름(정자체)과 서명");
+            if (!contractImageInput.files[0]) {
+                submitBtn.disabled = false; // 에러 시 버튼 재활성화
+                return alert("필수 항목을 첨부해주세요: 계약서 사진");
+            }
+            if (!signatureDataUrlInput.value) {
+                submitBtn.disabled = false; // 에러 시 버튼 재활성화
+                return alert("필수 항목을 입력해주세요: 이름(정자체)과 서명");
+            }
         } else {
             // 수정 모드에서는 기본 텍스트 필드만 체크 (이미지와 서명은 선택사항)
             const requiredFields = { fullName: "성명", dongHo: "동호수", dob: "생년월일", phone: "연락처" };
             for (const [id, name] of Object.entries(requiredFields)) {
-                if (!document.getElementById(id).value) return alert(`필수 항목을 입력해주세요: ${name}`);
+                if (!document.getElementById(id).value) {
+                    submitBtn.disabled = false; // 에러 시 버튼 재활성화
+                    return alert(`필수 항목을 입력해주세요: ${name}`);
+                }
             }
 
             // 수정 모드에서는 이미지 파일들이 없어도 기존 데이터 재사용하므로 검사하지 않음
@@ -1037,7 +1060,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadingModal.classList.remove('hidden');
         lockBodyInteraction();
-        submitBtn.disabled = true;
 
         try {
             // FormData 생성 (readonly 필드도 포함됨)
