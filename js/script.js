@@ -4,7 +4,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // -------------------------------------------------------------------
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 설정 영역 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCo4gaSaLkV_20lUZlRXvNfLPqdjL-wuD-87bNLc_UsQxvs56ZOQR0c6h9s2z8q6gO3w/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwjNNQaGxKiVR5LmubBCURwxpLvDu9aKPZKqo5UQAcb-4NTEKWBlkIGKgeuvLRHzG33bw/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
     // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 설정 영역 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     // -------------------------------------------------------------------
@@ -316,8 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 계약서 이미지나 명의변경 이미지인 경우 크롭 모달 자동 표시
                 if (input.id === 'contractImage' || input.id === 'nameChangeImage') {
-                    console.log(`크롭 모달 표시 대상: ${input.id}`);
-                    showCropModal(file, input, preview);
+                    console.log(`크롭 모달 표시 대상: ${input.id}`);                    
                 } else {
                     // 일반 미리보기 표시
                     const reader = new FileReader();
