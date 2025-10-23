@@ -245,11 +245,19 @@ header {
     gap: 20px;
 }
 
+/* 동호수 입력 그룹 (가로 나란히 배치) */
+.dongho-input-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
 input[type="text"],
 input[type="email"],
 input[type="tel"],
 input[type="password"],
 input[type="date"],
+input[type="number"],
 select {
     width: 100%;
     padding: 22px 20px;
@@ -266,6 +274,7 @@ input[type="email"]:focus,
 input[type="tel"]:focus,
 input[type="password"]:focus,
 input[type="date"]:focus,
+input[type="number"]:focus,
 select:focus {
     outline: none;
     border-color: #132D25;
