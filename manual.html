@@ -37,8 +37,17 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="manual-dongho">동호수 <span style="color: #6a140c;">*</span></label>
-                                <input type="text" id="manual-dongho" name="dongho" placeholder="예: 101동 1203호" required>
+                                <label>동호수 <span style="color: #6a140c;">*</span></label>
+                                <div class="dongho-input-group">
+                                    <div style="flex: 1;">
+                                        <input type="text" id="manual-dong" name="dong" placeholder="101" inputmode="numeric" required style="width: 100%;">
+                                        <small style="display: block; margin-top: 4px; color: #666;">동</small>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <input type="text" id="manual-ho" name="ho" placeholder="1001" inputmode="numeric" required style="width: 100%;">
+                                        <small style="display: block; margin-top: 4px; color: #666;">호</small>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="manual-dob">생년월일 (8자리) <span style="color: #6a140c;">*</span></label>

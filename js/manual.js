@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 입력 필드
     const nameInput = document.getElementById('manual-name');
-    const donghoInput = document.getElementById('manual-dongho');
+    const dongInput = document.getElementById('manual-dong');
+    const hoInput = document.getElementById('manual-ho');
     const dobInput = document.getElementById('manual-dob');
     const phoneInput = document.getElementById('manual-phone');
     const emailInput = document.getElementById('manual-email');
@@ -93,8 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
             errors.push('성명을 입력해주세요.');
         }
 
-        if (!donghoInput.value.trim()) {
-            errors.push('동호수를 입력해주세요.');
+        if (!dongInput.value.trim()) {
+            errors.push('동 번호를 입력해주세요.');
+        }
+
+        if (!hoInput.value.trim()) {
+            errors.push('호수를 입력해주세요.');
         }
 
         // 생년월일 검사 (8자리 숫자)
@@ -183,13 +188,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const contractImageBase64 = await fileToBase64(contractInput.files[0]);
             const namechangeImageBase64 = await fileToBase64(namechangeInput.files[0]);
 
+            // 동호수 조합 (예: "109동 603호")
+            const combinedDongHo = `${dongInput.value.trim()}동 ${hoInput.value.trim()}호`;
+
             // 백엔드 API 규격에 맞춘 데이터 구조 생성
             const payload = {
                 apiKey: API_KEY,
                 action: 'submitManualForm', // ★★★ 중요: 반드시 이 값이어야 함
                 formData: {
                     name: nameInput.value.trim(),
-                    dongho: donghoInput.value.trim(),
+                    dongho: combinedDongHo,
                     dob: dobInput.value.trim(),
                     phone: "'" + phoneInput.value.trim(), // ★ 문자열 강제 변환 (작은따옴표 prefix)
                     delegation: delegation ? delegation.value : '',
@@ -259,6 +267,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // 연락처 입력 필드 자동 포맷팅 (선택사항)
     // ===================================================================
     phoneInput.addEventListener('input', (e) => {
+        // 숫자만 입력 허용
+        e.target.value = e.target.value.replace(/\D/g, '');
+    });
+
+    // ===================================================================
+    // 동/호 입력 필드 숫자만 허용
+    // ===================================================================
+    dongInput.addEventListener('input', (e) => {
+        // 숫자만 입력 허용
+        e.target.value = e.target.value.replace(/\D/g, '');
+    });
+
+    hoInput.addEventListener('input', (e) => {
         // 숫자만 입력 허용
         e.target.value = e.target.value.replace(/\D/g, '');
     });
