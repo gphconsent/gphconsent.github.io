@@ -741,13 +741,23 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         document.getElementById('fullName').value = findDataByKeys(fullNameKeys);
-        document.getElementById('dongHo').value = findDataByKeys(dongHoKeys);
+
+        // 동호수 파싱: "101동 1001호" 형식을 dong과 ho로 분리
+        const dongHoValue = findDataByKeys(dongHoKeys);
+        const dongHoMatch = dongHoValue.match(/(\d+)동\s*(\d+)호/);
+        if (dongHoMatch) {
+            document.getElementById('dong').value = dongHoMatch[1];
+            document.getElementById('ho').value = dongHoMatch[2];
+        }
+
         document.getElementById('dob').value = findDataByKeys(dobKeys);
         document.getElementById('phone').value = findDataByKeys(phoneKeys);
 
         console.log("바인딩된 값들:", {
             fullName: document.getElementById('fullName').value,
-            dongHo: document.getElementById('dongHo').value,
+            dong: document.getElementById('dong').value,
+            ho: document.getElementById('ho').value,
+            dongHo: dongHoValue,
             dob: document.getElementById('dob').value,
             phone: document.getElementById('phone').value
         });
@@ -1027,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 필수 필드 유효성 검사
         if (!currentEditMode) {
             // 신규 제출 시 모든 필수 항목 체크
-            const requiredFields = { fullName: "성명", dongHo: "동호수", dob: "생년월일", phone: "연락처", editPassword: "수정용 비밀번호" };
+            const requiredFields = { fullName: "성명", dong: "동", ho: "호수", dob: "생년월일", phone: "연락처", editPassword: "수정용 비밀번호" };
             for (const [id, name] of Object.entries(requiredFields)) {
                 if (!document.getElementById(id).value) {
                     submitBtn.disabled = false; // 에러 시 버튼 재활성화
@@ -1044,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             // 수정 모드에서는 기본 텍스트 필드만 체크 (이미지와 서명은 선택사항)
-            const requiredFields = { fullName: "성명", dongHo: "동호수", dob: "생년월일", phone: "연락처" };
+            const requiredFields = { fullName: "성명", dong: "동", ho: "호수", dob: "생년월일", phone: "연락처" };
             for (const [id, name] of Object.entries(requiredFields)) {
                 if (!document.getElementById(id).value) {
                     submitBtn.disabled = false; // 에러 시 버튼 재활성화
@@ -1090,11 +1100,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 combinedSignatureObject = { base64: dataUrl.split(',')[1], type: 'image/png', name: 'combined_signature.png' };
             }
             
+            // 동호수 조합: dong과 ho를 "109동 603호" 형식으로 결합
+            const combinedDongHo = `${document.getElementById('dong').value.trim()}동 ${document.getElementById('ho').value.trim()}호`;
+
             const dataToSend = {
                 ...formData,
                 // 수정 모드에서는 originalEmail을 사용하되, 백엔드가 email 필드를 기대하므로 email로도 설정
                 email: currentEditMode ? originalEmail : formData.email,
                 originalEmail: currentEditMode ? originalEmail : formData.email,
+                dongHo: combinedDongHo,  // 조합된 동호수 사용
                 contractImageFile: await fileToBase64(contractImageInput.files[0], contractImageInput),
                 nameChangeImageFile: await fileToBase64(nameChangeImageInput.files[0], nameChangeImageInput),
                 combinedSignature: combinedSignatureObject,
@@ -1104,6 +1118,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 action: currentEditMode ? 'updateForm' : 'submitForm',
                 email: dataToSend.email,
                 fullName: dataToSend.fullName,
+                dong: document.getElementById('dong').value,
+                ho: document.getElementById('ho').value,
                 dongHo: dataToSend.dongHo,
                 hasContractImage: !!dataToSend.contractImageFile,
                 hasCombinedSignature: !!dataToSend.combinedSignature
@@ -1191,6 +1207,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // 일반 모드에서는 이메일 인증 후 제출 버튼 활성화
         }
     };
+
+    // ===================================================================
+    // 동/호 입력 필드 숫자만 허용 (manual.js 패턴)
+    // ===================================================================
+    const dongInput = document.getElementById('dong');
+    const hoInput = document.getElementById('ho');
+
+    if (dongInput) {
+        dongInput.addEventListener('input', (e) => {
+            // 숫자만 입력 허용
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    }
+
+    if (hoInput) {
+        hoInput.addEventListener('input', (e) => {
+            // 숫자만 입력 허용
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    }
 
     // --- 페이지 초기화 함수 실행 ---
     initializePage();
