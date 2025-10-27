@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:image" content="https://gphconsent.github.io/img/bg.jpg">
+    <title>동의서 일괄 업로드 - 고척푸르지오힐스테이트 입주예정자협의회</title>
+    <link rel="stylesheet" href="css/pcupload.css">
+</head>
+<body>
+    <!-- 미니멀 헤더 -->
+    <header class="minimal-header">
+        <div class="header-content">
+            <h1 class="header-title">고척푸르지오힐스테이트 입주예정자협의회</h1>
+            <p class="header-subtitle">스캔 동의서 일괄 업로드 시스템</p>
+        </div>
+    </header>
+
+    <!-- 메인 컨테이너 -->
+    <div class="container">
+        <!-- 안내 카드 -->
+        <div class="floating-card">
+            <div class="card-header">
+                <h3>PC 스캔 동의서 업로드</h3>
+                <p>PC에서 스캔한 동의서를 일괄 업로드할 수 있습니다</p>
+            </div>
+            <div class="card-content">
+                <!-- 파일명 형식 안내 (아코디언) -->
+                <div class="accordion">
+                    <button type="button" class="accordion-toggle" id="guide-toggle">
+                        <span>📋 올바른 파일 이름 형식 안내</span>
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" id="guide-content">
+                        <div class="guide-box">
+                            <h4>✅ 올바른 형식</h4>
+                            <p class="format-rule"><strong>동_호수.확장자</strong></p>
+                            <ul class="example-list">
+                                <li><code>103_204.jpg</code></li>
+                                <li><code>107_1902.pdf</code></li>
+                                <li><code>101_101.png</code></li>
+                            </ul>
+
+                            <h4 style="margin-top: 20px;">⚠️ 주의사항</h4>
+                            <ul class="warning-list">
+                                <li>동과 호수 사이는 <strong>반드시 언더바(_)</strong>로 구분해야 합니다</li>
+                                <li>다른 구분 기호(-, 공백 등)는 사용할 수 없습니다</li>
+                            </ul>
+
+                            <h4 style="margin-top: 20px;">❌ 잘못된 형식 예시</h4>
+                            <ul class="error-list">
+                                <li><del>103-204.jpg</del> (하이픈 사용)</li>
+                                <li><del>103동 204호.png</del> (텍스트 포함)</li>
+                                <li><del>103 204.pdf</del> (공백 사용)</li>
+                                <li><del>103.204.jpg</del> (점 사용)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 파일 선택 카드 -->
+        <div class="floating-card">
+            <div class="card-header">
+                <h3>파일 선택</h3>
+                <p>이미지 또는 PDF 파일을 선택해주세요</p>
+            </div>
+            <div class="card-content">
+                <!-- 드래그앤드롭 영역 -->
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p class="drop-zone-title">파일을 이곳에 드래그하거나</p>
+                        <button type="button" class="btn btn-primary" id="select-files-btn">파일 선택</button>
+                        <input type="file" id="file-input" accept="image/*,application/pdf" multiple style="display: none;">
+                        <p class="drop-zone-hint">이미지 파일 또는 PDF 파일만 가능합니다</p>
+                    </div>
+                </div>
+
+                <!-- 선택된 파일 목록 -->
+                <div id="selected-files-section" class="hidden">
+                    <h4 style="margin-top: 30px; margin-bottom: 15px; color: #132D25;">선택된 파일 (<span id="file-count">0</span>개)</h4>
+                    <div id="file-list" class="file-list"></div>
+
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button type="button" class="btn btn-secondary" id="clear-files-btn">파일 목록 초기화</button>
+                        <button type="button" class="btn btn-primary" id="upload-btn" disabled>업로드 시작</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 업로드 진행 상황 카드 (숨김 상태로 시작) -->
+        <div class="floating-card hidden" id="progress-card">
+            <div class="card-header">
+                <h3>업로드 진행 상황</h3>
+                <p>파일 업로드가 진행 중입니다</p>
+            </div>
+            <div class="card-content">
+                <div class="progress-summary">
+                    <div class="progress-stat">
+                        <span class="stat-label">전체</span>
+                        <span class="stat-value" id="total-count">0</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="stat-label">성공</span>
+                        <span class="stat-value success" id="success-count">0</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="stat-label">실패</span>
+                        <span class="stat-value error" id="error-count">0</span>
+                    </div>
+                </div>
+
+                <div class="results-container">
+                    <div class="results-column success-column">
+                        <div class="column-header">
+                            <h4>성공한 파일 <span class="count-badge success-badge">0</span></h4>
+                            <button class="copy-btn" data-column="success">📋 복사</button>
+                        </div>
+                        <div class="results-list" id="success-list"></div>
+                        <div class="empty-state" id="success-empty">성공한 파일이 없습니다</div>
+                    </div>
+                    <div class="results-column failure-column">
+                        <div class="column-header">
+                            <h4>실패한 파일 <span class="count-badge failure-badge">0</span></h4>
+                            <button class="copy-btn" data-column="failure">📋 복사</button>
+                        </div>
+                        <div class="results-list" id="failure-list"></div>
+                        <div class="empty-state" id="failure-empty">실패한 파일이 없습니다</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 알림 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/pcupload.js"></script>
+</body>
+</html>
