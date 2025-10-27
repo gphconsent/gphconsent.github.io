@@ -5,7 +5,7 @@
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwxHUs6wrQFM-PuqHzUvL51-jUD7eCLKvaTOegz0V36oJQ4RJkJogTQiEtKoBqalqukgw/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzM0MdX1JKjeaIYxIkY_dXH7tVTd2XhsatCdGsHtRIqwRhMjyIQI0XhcP-jzyNKtC7pzA/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
 
     // --- DOM 요소 ---
