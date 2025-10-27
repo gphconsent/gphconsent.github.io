@@ -5,7 +5,7 @@
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzM0MdX1JKjeaIYxIkY_dXH7tVTd2XhsatCdGsHtRIqwRhMjyIQI0XhcP-jzyNKtC7pzA/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzWotJjxbSjBLIMdKwagFV4nhL_Ac7H5zB2Gcx5I5_2wqNzzT2tkegQJsl-nPkVYRjO1A/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
 
     // --- DOM 요소 ---
@@ -255,12 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         successEmpty.style.display = 'flex';
         failureEmpty.style.display = 'flex';
 
-        // 각 파일 개별 처리
-        for (const file of selectedFiles) {
-            // [수정] processFile 함수를 호출하도록 수정
-            await processFile(file);
-        }
+        // 모든 유효한 파일을 동시에(병렬로) 업로드하고, 모든 작업이 끝날 때까지 기다립니다.
+        const validFiles = selectedFiles.filter(file => validateFileName(file.name).isValid);
+        await Promise.all(validFiles.map(processFile));
 
+        // 모든 작업이 완료된 후 최종 알림창을 띄웁니다.
         const successRate = Math.round((uploadStats.success / uploadStats.total) * 100);
         alert(`업로드가 완료되었습니다!\n\n성공: ${uploadStats.success}개\n실패: ${uploadStats.error}개\n성공률: ${successRate}%`);
 
@@ -269,21 +268,87 @@ document.addEventListener('DOMContentLoaded', () => {
         selectFilesBtn.disabled = false;
     });
 
-    // [신규] 파일을 Base64로 변환하는 헬퍼 함수
+    /**
+     * [신규] GAS(iframe)로부터 응답을 처리하는 전역 콜백 함수
+     * 이 함수가 '우편물 수신함' 역할을 하여, 서버의 처리 결과를 받아 UI를 업데이트합니다.
+     */
+    window.handleGasResponse = function(response) {
+        // ================================================================
+        // 1단계: 서버로부터 응답이 오는지 확인
+        // ================================================================
+        console.log('✅ GAS 서버로부터 응답 도착!', response);
+    
+        try {
+            const { status, message, fileName } = response;
+    
+            // ================================================================
+            // 2단계: addResultItem 함수가 호출되는지 확인
+            // ================================================================
+            console.log(`- ${fileName}의 결과를 화면에 표시합니다. (상태: ${status})`);
+            
+            if (status === 'success') {
+                uploadStats.success++;
+                addResultItem(fileName, 'success', message || '업로드 성공');
+            } else {
+                uploadStats.error++;
+                addResultItem(fileName, 'error', message || '알 수 없는 서버 오류');
+            }
+    
+            updateStats();
+            updateColumnCounts();
+    
+            const processedCount = uploadStats.success + uploadStats.error;
+            if (processedCount === uploadStats.total) {
+                // ================================================================
+                // 3단계: 모든 작업이 완료되었는지 확인
+                // ================================================================
+                console.log('🎉 모든 파일 처리 완료! 최종 알림창을 띄웁니다.');
+                
+                const successRate = Math.round((uploadStats.success / uploadStats.total) * 100);
+                alert(`업로드가 완료되었습니다!\n\n성공: ${uploadStats.success}개\n실패: ${uploadStats.error}개\n성공률: ${successRate}%`);
+    
+                uploadBtn.disabled = false;
+                clearFilesBtn.disabled = false;
+                selectFilesBtn.disabled = false;
+            }
+        } catch (e) {
+            // ================================================================
+            // 4단계: 만약 이 함수 안에서 에러가 나는지 확인
+            // ================================================================
+            console.error('❌ handleGasResponse 함수 내부에서 오류 발생!', e);
+            alert('서버 응답을 처리하는 중 자바스크립트 오류가 발생했습니다. 개발자 콘솔을 확인해주세요.');
+        }
+    };
+
     const toBase64 = file => new Promise((resolve, reject) => {
+        // 1. 파일을 읽기 위한 FileReader 객체를 생성합니다.
         const reader = new FileReader();
+    
+        // 2. 파일을 Data URL 형식으로 읽도록 지시합니다.
         reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result.split(',')[1]); // 'data:...,' 부분 제외
-        reader.onerror = error => reject(error);
+    
+        // 3. 파일 읽기가 성공적으로 완료되면 이 함수가 실행됩니다.
+        reader.onload = () => {
+            // reader.result는 "data:image/jpeg;base64,..."와 같은 형태의 문자열입니다.
+            // 여기서 실제 Base64 데이터는 쉼표(,) 뒷부분이므로, 쉼표를 기준으로 잘라내어
+            // 두 번째 부분([1])을 반환(resolve)합니다.
+            resolve(reader.result.split(',')[1]);
+        };
+    
+        // 4. 파일 읽기 중 오류가 발생하면 이 함수가 실행됩니다.
+        reader.onerror = error => {
+            // 오류를 반환(reject)합니다.
+            reject(error);
+        };
     });
 
-    // [신규] 개별 파일을 처리하고 서버에 업로드하는 함수
+    
+
     async function processFile(file) {
         try {
-            // 1. 파일을 Base64로 인코딩
             const base64Data = await toBase64(file);
 
-            // 2. 서버로 보낼 데이터(Payload) 구성
+            // 1. 서버로 보낼 데이터를 '순수한 JSON' 형태로 만듭니다.
             const payload = {
                 apiKey: API_KEY,
                 action: 'uploadScan',
@@ -294,21 +359,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
             
-            // 3. fetch API를 사용하여 서버(GAS)에 POST 요청 전송
+            // 2. fetch API를 사용하여 서버에 POST 요청을 보냅니다.
             const response = await fetch(GAS_WEB_APP_URL, {
                 method: 'POST',
+                // body 자체를 순수한 JSON 문자열로 보냅니다.
                 body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                // 서버가 JSON으로 인식하도록 헤더를 설정합니다.
+                headers: { 'Content-Type': 'application/json' },
                 redirect: 'follow'
             });
 
-            // 4. 서버 응답 파싱
             if (!response.ok) {
                  throw new Error(`서버 응답 오류: ${response.status}`);
             }
+
             const result = await response.json();
 
-            // 5. 결과에 따라 UI 업데이트
+            // 3. 서버로부터 받은 JSON 응답을 처리합니다.
             if (result.status === 'success') {
                 uploadStats.success++;
                 addResultItem(file.name, 'success', result.message || '업로드 성공');
@@ -317,12 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-            // 6. 에러 발생 시 UI 업데이트
             console.error(`[${file.name}] 업로드 실패:`, error);
             uploadStats.error++;
             addResultItem(file.name, 'error', error.message);
         } finally {
-            // 7. 통계 및 컬럼 카운트 업데이트
             updateStats();
             updateColumnCounts();
         }
