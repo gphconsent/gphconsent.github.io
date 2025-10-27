@@ -5,7 +5,7 @@
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzWotJjxbSjBLIMdKwagFV4nhL_Ac7H5zB2Gcx5I5_2wqNzzT2tkegQJsl-nPkVYRjO1A/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxwScP3P70sacjcjcaNaf7PCqVvsTXcUpRJ9ed2rFOmj5kjRVwOJ-l8TwWmS_nOwnr-hw/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
 
     // --- DOM 요소 ---
@@ -362,12 +362,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. fetch API를 사용하여 서버에 POST 요청을 보냅니다.
             const response = await fetch(GAS_WEB_APP_URL, {
                 method: 'POST',
-                // body 자체를 순수한 JSON 문자열로 보냅니다.
-                body: JSON.stringify(payload),
-                // 서버가 JSON으로 인식하도록 헤더를 설정합니다.
-                headers: { 'Content-Type': 'application/json' },
-                redirect: 'follow'
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
             });
+
+            
 
             if (!response.ok) {
                  throw new Error(`서버 응답 오류: ${response.status}`);
