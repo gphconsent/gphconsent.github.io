@@ -5,7 +5,7 @@
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxwScP3P70sacjcjcaNaf7PCqVvsTXcUpRJ9ed2rFOmj5kjRVwOJ-l8TwWmS_nOwnr-hw/exec';
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-_ykMFZwJmMLwIhxn9PsOrn2MtV2mq3V1rhSU2-2JNhUCX_rS88UkzSu_WxWRjLIguA/exec';
     const API_KEY = 'GEM-PROJECT-GPH-2025';
 
     // --- DOM 요소 ---
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: base64Data
                 }
             };
-            
+
             // 2. fetch API를 사용하여 서버에 POST 요청을 보냅니다.
             const response = await fetch(GAS_WEB_APP_URL, {
                 method: 'POST',
@@ -366,10 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload)
             });
 
-            
 
-            if (!response.ok) {
-                 throw new Error(`서버 응답 오류: ${response.status}`);
+
+            if (!response.ok) {                
+                throw new Error(`서버 응답 오류: ${response.status}`);
             }
 
             const result = await response.json();
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-            console.error(`[${file.name}] 업로드 실패:`, error);
+            console.error(`[${file.name}] 업로드 실패:`, error);            
             uploadStats.error++;
             addResultItem(file.name, 'error', error.message);
         } finally {
