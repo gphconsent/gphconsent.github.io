@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => resolve({ base64: reader.result.split(',')[1], type: file.type, name: file.name });
-        reader.onerror = error => reject(error);
+        reader.onerror = () => reject(reader.error || new Error('파일 읽기 실패: ' + (file && file.name)));
     });
 
     const combinePads = (namePad, signaturePad) => new Promise((resolve, reject) => {
@@ -1142,7 +1142,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(result.message);
             }
         } catch (error) {
-            alert('오류가 발생했습니다: ' + error.message);
+            const msg = (error && (error.message || error.name)) || String(error);
+            console.error('제출 오류:', error);
+            alert('오류가 발생했습니다: ' + msg);
             submitBtn.disabled = false;
         } finally {
             loadingModal.classList.add('hidden');
