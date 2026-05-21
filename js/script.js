@@ -271,17 +271,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================
 
     const fileToBase64 = (file, inputElement = null) => new Promise((resolve, reject) => {
-        // 크롭된 파일이 있는 경우 우선 사용 (브라우저 호환성)
-        if (inputElement && inputElement._croppedFile) {
-            file = inputElement._croppedFile;
-            console.log('크롭된 파일 사용:', file.name);
+        // 우선순위: 크롭된 Blob > change 시점에 미리 복제한 안전 Blob > input.files[0]
+        let source = null;
+        let sourceLabel = 'files[0]';
+        const fallbackName = (inputElement && inputElement.files && inputElement.files[0] && inputElement.files[0].name) || (file && file.name);
+        const fallbackType = (inputElement && inputElement.files && inputElement.files[0] && inputElement.files[0].type) || (file && file.type) || 'image/jpeg';
+
+        if (inputElement && inputElement._croppedBlob) {
+            source = inputElement._croppedBlob;
+            sourceLabel = '_croppedBlob';
+        } else if (inputElement && inputElement._safeBlob) {
+            source = inputElement._safeBlob;
+            sourceLabel = '_safeBlob';
+        } else if (file) {
+            source = file;
         }
 
-        if (!file) return resolve(null);
+        if (!source) return resolve(null);
+        console.log(`파일 읽기 소스: ${sourceLabel} (${inputElement && inputElement.id})`);
+
         const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve({ base64: reader.result.split(',')[1], type: file.type, name: file.name });
-        reader.onerror = () => reject(reader.error || new Error('파일 읽기 실패: ' + (file && file.name)));
+        reader.onload = () => resolve({
+            base64: reader.result.split(',')[1],
+            type: source.type || fallbackType,
+            name: source.name || fallbackName || 'upload.jpg'
+        });
+        reader.onerror = () => {
+            const baseErr = reader.error || new Error('파일 읽기 실패');
+            const err = new Error(baseErr.message || '파일 읽기 실패');
+            err.name = baseErr.name || 'NotReadableError';
+            err.inputId = inputElement && inputElement.id;
+            reject(err);
+        };
+        try {
+            reader.readAsDataURL(source);
+        } catch (e) {
+            e.inputId = inputElement && inputElement.id;
+            reject(e);
+        }
     });
 
     const combinePads = (namePad, signaturePad) => new Promise((resolve, reject) => {
@@ -331,6 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // 파일이 선택 취소된 경우, 기존 이미지를 다시 표시하거나 숨김
                 console.log(`파일 선택 취소됨: ${input.id}`);
+                // 안전 Blob/크롭 Blob도 같이 정리하여 잔여 상태로 인한 오제출 방지
+                input._safeBlob = null;
+                input._croppedBlob = null;
                 // 수정 모드에서는 기존 이미지를 유지
                 if (!currentEditMode) {
                     preview.classList.add('hidden');
@@ -575,13 +605,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===== Event wiring
-    function handleFileChange(e) {
-        const file = e.target.files && e.target.files[0];
+    async function handleFileChange(e) {
+        const input = e.target;
+        const file = input.files && input.files[0];
         if (!file) return;
 
-        activeInput = e.target; // remember which input opened the modal
+        // change 직후 파일 바이트를 메모리로 복제 → OS 파일 핸들/SAF 토큰 만료에 면역
+        // (안드로이드 Google Photos 등 클라우드 사진 선택 시 NotReadableError 방지)
+        input._safeBlob = null;
+        input._croppedBlob = null;
+        try {
+            const buf = await file.arrayBuffer();
+            input._safeBlob = new Blob([buf], { type: file.type || 'image/jpeg' });
+            console.log(`_safeBlob 캡처 완료: ${input.id} (${buf.byteLength} bytes)`);
+        } catch (err) {
+            console.error(`_safeBlob 캡처 실패 (${input.id}):`, err);
+            alert('사진을 읽을 수 없습니다. 다시 첨부해 주세요.\n(클라우드 사진을 선택한 경우, 기기에 저장된 사진으로 시도해보세요.)');
+            input.value = '';
+            return;
+        }
+
+        activeInput = input; // remember which input opened the modal
         if (objectUrl) URL.revokeObjectURL(objectUrl);
-        objectUrl = URL.createObjectURL(file);
+        objectUrl = URL.createObjectURL(input._safeBlob);
 
         cropImgEl.onload = () => {
         initCropper();
@@ -654,9 +700,18 @@ document.addEventListener('DOMContentLoaded', () => {
         preview.classList.remove('hidden');
         }
 
-        // expose the cropped result for form submission logic (if any)
+        // expose the cropped result for form submission logic
         activeInput.dataset.cropped = '1';
         activeInput.dataset.croppedDataUrl = dataUrl;
+
+        // 제출 시 사용할 크롭 Blob 저장 (canvas 기반 → OS 파일 핸들과 무관)
+        const inputForBlob = activeInput;
+        canvas.toBlob((blob) => {
+            if (blob) {
+                inputForBlob._croppedBlob = blob;
+                console.log(`_croppedBlob 저장 완료: ${inputForBlob.id} (${blob.size} bytes)`);
+            }
+        }, 'image/jpeg', 0.92);
 
         closeModal();
     });
@@ -1142,9 +1197,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(result.message);
             }
         } catch (error) {
-            const msg = (error && (error.message || error.name)) || String(error);
             console.error('제출 오류:', error);
-            alert('오류가 발생했습니다: ' + msg);
+            const isNotReadable = error && (error.name === 'NotReadableError' || /could not be read/i.test(error.message || ''));
+            if (isNotReadable) {
+                // 어느 input에서 실패했는지 식별되면 해당 input만 초기화
+                const failedId = error.inputId;
+                const targets = failedId
+                    ? [document.getElementById(failedId)].filter(Boolean)
+                    : [contractImageInput, nameChangeImageInput];
+                targets.forEach((inp) => {
+                    if (!inp) return;
+                    inp.value = '';
+                    inp._safeBlob = null;
+                    inp._croppedBlob = null;
+                    delete inp.dataset.cropped;
+                    delete inp.dataset.croppedDataUrl;
+                });
+                alert('사진을 다시 첨부해 주세요.\n\n안드로이드에서 Google Photos 등 클라우드 사진을 선택한 뒤 시간이 오래 지나면 발생할 수 있습니다. 기기에 저장된 사진으로 다시 첨부해 주세요.');
+            } else {
+                const msg = (error && (error.message || error.name)) || String(error);
+                alert('오류가 발생했습니다: ' + msg);
+            }
             submitBtn.disabled = false;
         } finally {
             loadingModal.classList.add('hidden');
